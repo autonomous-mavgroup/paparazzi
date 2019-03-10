@@ -25,9 +25,11 @@
 
 #ifndef ADAPTIVE_ORANGE_AVOIDER_H
 #define ADAPTIVE_ORANGE_AVOIDER_H
+#include <stdbool.h>
+#include <stdint.h>
 
-// extern void orange_avoider_periodic;
-
+extern void adaptive_orange_avoider_periodic(void);
+extern void adaptive_orange_avoider_init(void);
 
 #endif
 
