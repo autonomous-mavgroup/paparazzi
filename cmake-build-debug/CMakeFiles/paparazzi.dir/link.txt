@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   @CMakeFiles/paparazzi.dir/objects1.rsp @CMakeFiles/paparazzi.dir/objects2.rsp  -o paparazzi 

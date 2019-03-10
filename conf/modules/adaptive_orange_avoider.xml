@@ -1,0 +1,15 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="adaptive_orange_avoider">
+  <doc>
+    <description>testing if changes in avoid-orange are effective</description>
+  </doc>
+  <header>
+    <file name="adaptive_orange_avoider.h"/>
+  </header>
+  <periodic fun="orange_avoider_periodic" freq="4" start="orange_avoider_init"/>
+  <makefile>
+    <file name="adaptive_orange_avoider.c"/>
+  </makefile>
+</module>
+

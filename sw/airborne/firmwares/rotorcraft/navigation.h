@@ -268,7 +268,7 @@ extern uint8_t nav_oval_count;
 
 /*********** Navigation along a line *************************************/
 extern void nav_route(struct EnuCoor_i *wp_start, struct EnuCoor_i *wp_end);
-static inline void NavSegment(uint8_t wp_start, uint8_t wp_end)
+static inline void NavSegmentwaypoint_set_xy_i(uint8_t wp_start, uint8_t wp_end)
 {
   horizontal_mode = HORIZONTAL_MODE_ROUTE;
   nav_route(&waypoints[wp_start].enu_i, &waypoints[wp_end].enu_i);
