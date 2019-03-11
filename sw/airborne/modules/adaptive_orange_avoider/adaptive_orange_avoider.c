@@ -44,6 +44,9 @@ uint8_t chooseRandomIncrementAvoidance(void);
 bool close_to_waypoint(uint8_t);
 void print_current_state(void);
 void print_waypoint_pos(uint8_t);
+void test_list_points(void);
+void test_find_distances(void);
+struct EnuCoor_f wpToPoint(uint8_t);
 
 enum navigation_state_t {
     SAFE,
@@ -102,7 +105,6 @@ void adaptive_orange_avoider_periodic(void)
     if(!autopilot_in_flight()){
         return;
     }
-
     // compute current color thresholds
     int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
 
@@ -262,6 +264,7 @@ float square_f(float x){
     return x * x;
 }
 
+
 bool close_to_waypoint(uint8_t wp_id){
     float distance = sqrtf(square_f(waypoints[wp_id].enu_f.x - stateGetPositionEnu_f()->x) +
                            square_f((waypoints[wp_id].enu_f.y - stateGetPositionEnu_f()->y)));
@@ -278,4 +281,85 @@ void print_current_state(void){
 
 void print_waypoint_pos(uint8_t wp){
     PRINT("Wp position (%f, %f) \n ", waypoint_get_x(wp), waypoint_get_y(wp));
+}
+
+void printPointPos(struct EnuCoor_f* point) {
+    PRINT("Point Position: (%f, %f) \n", point->x, point->y);
+}
+
+typedef struct ListPoints ListPoints;
+
+float distancePointsf(struct EnuCoor_f* start_point, struct EnuCoor_f* end_point){
+    float distance = sqrtf(powf(end_point->x - start_point->x, 2) + powf(end_point->y - start_point->y,2));
+    return distance;
+}
+
+struct ListPoints{
+    float x[20];
+    float y[20];
+    int number_points;
+};
+
+ListPoints generateIntermidiatePoints(struct EnuCoor_f* start_point, struct EnuCoor_f* end_point, int points_num){
+    float v_x = end_point->x - start_point->x;
+    float v_y = end_point->y - start_point->y;
+    ListPoints list_of_points;
+    list_of_points.number_points = points_num;
+    for (int i = 0; i < points_num + 1; i++){
+        float x_i = start_point->x + v_x/points_num * i;
+        float y_i = start_point->y + v_y/points_num * i;
+        list_of_points.x[i] = x_i;
+        list_of_points.y[i] = y_i;
+    }
+    return list_of_points;
+}
+
+ListPoints generetatePossibleTargets(uint8_t corner_id, uint8_t* corner_wps, int points_num){
+    struct EnuCoor_f corner_point = wpToPoint(corner_wps[corner_id]);
+    struct EnuCoor_f corner_point_next =  wpToPoint(corner_wps[(corner_id + 1) % 4]);
+    ListPoints line = generateIntermidiatePoints(&corner_point, &corner_point_next, points_num);
+    return line;
+}
+
+float* findDistances(ListPoints* points){
+    float distances[points->number_points];
+    struct EnuCoor_f current_position = {.x = stateGetPositionEnu_f()->x, .y = stateGetPositionEnu_f()->y};
+    for (int i = 0; i < points->number_points + 1; i++){
+        struct EnuCoor_f point = {.x = points->x[i], .y = points->y[i]};
+        distances[i] = distancePointsf(&current_position, &point);
+    }
+    return distances;
+}
+
+struct EnuCoor_f wpToPoint(uint8_t wp_id){
+    struct EnuCoor_f point;
+    point.x = waypoint_get_x(wp_id);
+    point.y = waypoint_get_y(wp_id);
+    return point;
+}
+
+struct EnuCoor_i float2IntPoint(struct EnuCoor_f* point){
+    struct EnuCoor_i point_int;
+    point_int.x = POS_BFP_OF_REAL(point->x);
+    point_int.y = POS_BFP_OF_REAL(point->y);
+    return point_int;
+}
+
+void test_list_points(void) {
+    struct EnuCoor_f point_1 = {.x = 0, .y = 0};
+    struct EnuCoor_f point_2 = {.x = 0, .y = 1};
+    ListPoints list_of_points = generateIntermidiatePoints(&point_1, &point_2, 10);
+    for (int i = 0; i < 10 + 1; i++) {
+        PRINT("(x, y) = (%f, %f)", list_of_points.x[i], list_of_points.y[i]);
+    }
+}
+
+void test_find_distances(void){
+//    struct EnuCoor_f current_position = {.x = waypoint_get_x(corner_wps[0]), .y = waypoint_get_y(corner_wps[1])};
+//    stateSetPositionEnu_f(&current_position);
+    ListPoints list_of_points = generetatePossibleTargets(2, corner_wps, 10);
+    float* distances = findDistances(&list_of_points);
+    for (int i = 0; i < list_of_points.number_points + 1; i ++){
+        PRINT("Point (%f, %f), distance : %f", list_of_points.x[i], list_of_points.y[i], distances[i]);
+    }
 }

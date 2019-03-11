@@ -28,6 +28,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+extern float oa_color_count_frac;
+
 extern void adaptive_orange_avoider_periodic(void);
 extern void adaptive_orange_avoider_init(void);
 
