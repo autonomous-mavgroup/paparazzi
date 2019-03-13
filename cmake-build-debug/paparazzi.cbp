@@ -9664,6 +9664,12 @@
 		<Unit filename="/home/lorenzo/paparazzi/sw/airborne/modules/orange_avoider/orange_avoider_guided.h">
 			<Option target="paparazzi"/>
 		</Unit>
+		<Unit filename="/home/lorenzo/paparazzi/sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c">
+			<Option target="paparazzi"/>
+		</Unit>
+		<Unit filename="/home/lorenzo/paparazzi/sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.h">
+			<Option target="paparazzi"/>
+		</Unit>
 		<Unit filename="/home/lorenzo/paparazzi/sw/airborne/modules/pano_unwrap/pano_unwrap.c">
 			<Option target="paparazzi"/>
 		</Unit>

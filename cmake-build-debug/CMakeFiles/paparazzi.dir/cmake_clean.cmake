@@ -557,6 +557,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/paparazzi.dir/sw/airborne/modules/optical_flow/px4flow.c.o"
   "CMakeFiles/paparazzi.dir/sw/airborne/modules/optical_flow/px4flow_i2c.c.o"
   "CMakeFiles/paparazzi.dir/sw/airborne/modules/adaptive_orange_avoider/adaptive_orange_avoider.c.o"
+  "CMakeFiles/paparazzi.dir/sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.o"
   "CMakeFiles/paparazzi.dir/sw/airborne/modules/orange_avoider/orange_avoider.c.o"
   "CMakeFiles/paparazzi.dir/sw/airborne/modules/orange_avoider/orange_avoider_guided.c.o"
   "CMakeFiles/paparazzi.dir/sw/airborne/modules/pano_unwrap/pano_unwrap.c.o"

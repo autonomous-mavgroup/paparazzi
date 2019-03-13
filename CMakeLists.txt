@@ -3497,6 +3497,8 @@ add_executable(paparazzi
     sw/airborne/modules/optical_flow/px4flow_i2c.h
         sw/airborne/modules/adaptive_orange_avoider/adaptive_orange_avoider.c
         sw/airborne/modules/adaptive_orange_avoider/adaptive_orange_avoider.h
+        sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.h
+        sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c
 
         sw/airborne/modules/orange_avoider/orange_avoider.c
     sw/airborne/modules/orange_avoider/orange_avoider.h

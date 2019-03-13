@@ -566,6 +566,7 @@ set(CMAKE_DEPENDS_CHECK_C
   "/home/lorenzo/paparazzi/sw/airborne/modules/optical_flow/px4flow_i2c.c" "/home/lorenzo/paparazzi/cmake-build-debug/CMakeFiles/paparazzi.dir/sw/airborne/modules/optical_flow/px4flow_i2c.c.o"
   "/home/lorenzo/paparazzi/sw/airborne/modules/orange_avoider/orange_avoider.c" "/home/lorenzo/paparazzi/cmake-build-debug/CMakeFiles/paparazzi.dir/sw/airborne/modules/orange_avoider/orange_avoider.c.o"
   "/home/lorenzo/paparazzi/sw/airborne/modules/orange_avoider/orange_avoider_guided.c" "/home/lorenzo/paparazzi/cmake-build-debug/CMakeFiles/paparazzi.dir/sw/airborne/modules/orange_avoider/orange_avoider_guided.c.o"
+  "/home/lorenzo/paparazzi/sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c" "/home/lorenzo/paparazzi/cmake-build-debug/CMakeFiles/paparazzi.dir/sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.o"
   "/home/lorenzo/paparazzi/sw/airborne/modules/pano_unwrap/pano_unwrap.c" "/home/lorenzo/paparazzi/cmake-build-debug/CMakeFiles/paparazzi.dir/sw/airborne/modules/pano_unwrap/pano_unwrap.c.o"
   "/home/lorenzo/paparazzi/sw/airborne/modules/pose_history/pose_history.c" "/home/lorenzo/paparazzi/cmake-build-debug/CMakeFiles/paparazzi.dir/sw/airborne/modules/pose_history/pose_history.c.o"
   "/home/lorenzo/paparazzi/sw/airborne/modules/px4_flash/px4_flash.c" "/home/lorenzo/paparazzi/cmake-build-debug/CMakeFiles/paparazzi.dir/sw/airborne/modules/px4_flash/px4_flash.c.o"

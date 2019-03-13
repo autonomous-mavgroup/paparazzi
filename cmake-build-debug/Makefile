@@ -15405,6 +15405,33 @@ sw/airborne/modules/orange_avoider/orange_avoider_guided.c.s:
 	$(MAKE) -f CMakeFiles/paparazzi.dir/build.make CMakeFiles/paparazzi.dir/sw/airborne/modules/orange_avoider/orange_avoider_guided.c.s
 .PHONY : sw/airborne/modules/orange_avoider/orange_avoider_guided.c.s
 
+sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.o: sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.o
+
+.PHONY : sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.o
+
+# target to build an object file
+sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.o:
+	$(MAKE) -f CMakeFiles/paparazzi.dir/build.make CMakeFiles/paparazzi.dir/sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.o
+.PHONY : sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.o
+
+sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.i: sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.i
+
+.PHONY : sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.i
+
+# target to preprocess a source file
+sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.i:
+	$(MAKE) -f CMakeFiles/paparazzi.dir/build.make CMakeFiles/paparazzi.dir/sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.i
+.PHONY : sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.i
+
+sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.s: sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.s
+
+.PHONY : sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.s
+
+# target to generate assembly for a file
+sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.s:
+	$(MAKE) -f CMakeFiles/paparazzi.dir/build.make CMakeFiles/paparazzi.dir/sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.s
+.PHONY : sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.c.s
+
 sw/airborne/modules/pano_unwrap/pano_unwrap.o: sw/airborne/modules/pano_unwrap/pano_unwrap.c.o
 
 .PHONY : sw/airborne/modules/pano_unwrap/pano_unwrap.o
@@ -74946,6 +74973,9 @@ help:
 	@echo "... sw/airborne/modules/orange_avoider/orange_avoider_guided.o"
 	@echo "... sw/airborne/modules/orange_avoider/orange_avoider_guided.i"
 	@echo "... sw/airborne/modules/orange_avoider/orange_avoider_guided.s"
+	@echo "... sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.o"
+	@echo "... sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.i"
+	@echo "... sw/airborne/modules/orange_avoider_memory/orange_avoider_memory.s"
 	@echo "... sw/airborne/modules/pano_unwrap/pano_unwrap.o"
 	@echo "... sw/airborne/modules/pano_unwrap/pano_unwrap.i"
 	@echo "... sw/airborne/modules/pano_unwrap/pano_unwrap.s"
