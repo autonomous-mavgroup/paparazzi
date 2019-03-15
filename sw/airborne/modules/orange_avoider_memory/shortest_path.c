@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <limits.h>
 #define BIG_INT 10000;
+#define PRINT(string,...) fprintf(stderr, "[orange_avoider->%s()] " string,__FUNCTION__ , ##__VA_ARGS__)
+
 
 heap_t *create_heap (int n) {
     heap_t *h = calloc(1, sizeof (heap_t));
@@ -60,18 +62,38 @@ int pop_heap (heap_t *h) {
     return v;
 }
 
+void print_graph(graph_t * g){
+    for (int i = 0; i < g->vertices_len; i++){
+        int name = i + 'a';
+        vertex_t *v = g->vertices[i];
+        for (int j = 0; j < v->edges_len; j++){
+            edge_t* edge = v->edges[j];
+            int name_target = edge->vertex + 'a';
+            PRINT("EDGE %c-%c\n", name, name_target);
+        }
+    }
+}
+
 void dijkstra (graph_t *g, int a, int b) {
+//    PRINT("\nDISJSTRA INIT\n");
+//    PRINT("VERTICES LEN %i", g->vertices_len);
+//    print_graph(g);
     int i, j;
     a = a - 'a';
     b = b - 'a';
+//    PRINT("\nVERTICES %i-%i\n", a, b);
+//    PRINT("\nVertices len %i \n", g->vertices_len);
     for (i = 0; i < g->vertices_len; i++) {
+//        PRINT("\n i: %i, name %i", i, g->vertices[i]->dist);
         vertex_t *v = g->vertices[i];
         v->dist = INT_MAX;
         v->prev = 0;
         v->visited = 0;
     }
+//    PRINT("\nFINISHED INIT GRAPH\n");
     vertex_t *v = g->vertices[a];
     v->dist = 0;
+//    PRINT("\nHEAP CREATED\n");
     heap_t *h = create_heap(g->vertices_len);
     push_heap(h, a, v->dist);
     while (h->len) {
@@ -113,11 +135,11 @@ Path get_path(graph_t *g, int i) {
 
 
 void print_path(Path* path){
-    printf("Node sequence: ");
+    PRINT("Node sequence: ");
     for (int j = 0; j < path->number_nodes; j++){
-        printf("%c", path->path[j]);
+        PRINT("j : %i, node : %c ", j, path->path[j]);
     }
-    printf(", distance : %i \n", path->dist);
+    PRINT(", distance : %i \n", path->dist);
 }
 
 void block_edge(graph_t* g, int a, int b){

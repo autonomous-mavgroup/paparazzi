@@ -18,6 +18,7 @@ typedef struct Path {
     int dist;
     char* path;
     int number_nodes;
+    int target_node;
 } Path;
 
 heap_t *create_heap (int n);

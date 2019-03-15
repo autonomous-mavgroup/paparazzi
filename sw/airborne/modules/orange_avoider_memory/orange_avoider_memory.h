@@ -26,10 +26,11 @@
 #ifndef ORANGE_AVOIDER_MEMORY_H
 #define ORANGE_AVOIDER_MEMORY_H
 
+#include "stdint.h"
+
 extern float oa_color_count_frac;
 
 extern void orange_avoider_init();
 extern void orange_avoider_periodic();
 
 #endif
-

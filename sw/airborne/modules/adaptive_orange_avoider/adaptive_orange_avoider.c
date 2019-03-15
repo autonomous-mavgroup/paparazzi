@@ -46,7 +46,7 @@ void print_current_state(void);
 void print_waypoint_pos(uint8_t);
 void test_list_points(void);
 void test_find_distances(void);
-struct EnuCoor_f wpToPoint(uint8_t);
+struct EnuCoor_f get_wp_pos_enui(uint8_t wp_id);
 
 enum navigation_state_t {
     SAFE,
@@ -315,8 +315,8 @@ ListPoints generateIntermidiatePoints(struct EnuCoor_f* start_point, struct EnuC
 }
 
 ListPoints generetatePossibleTargets(uint8_t corner_id, uint8_t* corner_wps, int points_num){
-    struct EnuCoor_f corner_point = wpToPoint(corner_wps[corner_id]);
-    struct EnuCoor_f corner_point_next =  wpToPoint(corner_wps[(corner_id + 1) % 4]);
+    struct EnuCoor_f corner_point = get_wp_pos_enui(corner_wps[corner_id]);
+    struct EnuCoor_f corner_point_next = get_wp_pos_enui(corner_wps[(corner_id + 1) % 4]);
     ListPoints line = generateIntermidiatePoints(&corner_point, &corner_point_next, points_num);
     return line;
 }
@@ -331,7 +331,7 @@ float* findDistances(ListPoints* points){
     return distances;
 }
 
-struct EnuCoor_f wpToPoint(uint8_t wp_id){
+struct EnuCoor_f get_wp_pos_enui(uint8_t wp_id){
     struct EnuCoor_f point;
     point.x = waypoint_get_x(wp_id);
     point.y = waypoint_get_y(wp_id);
