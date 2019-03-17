@@ -28,5 +28,6 @@ void dijkstra (graph_t *g, int a, int b);
 void block_edge(graph_t* g, int a, int b);
 Path get_path(graph_t *g, int i);
 void print_path(Path*);
+void print_graph(graph_t * g);
 
 #endif //GRAPH_WAYPOINTS_SHORTEST_PATH_H

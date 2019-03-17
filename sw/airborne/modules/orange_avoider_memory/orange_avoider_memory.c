@@ -87,11 +87,11 @@ uint8_t cyberzoo_corners[4] = {WP__CZ1, WP__CZ2, WP__CZ3, WP__CZ4};
 
 
 void print_waypoint_pos(uint8_t wp){
-    PRINT("Wp %i position (%i, %i) \n ", wp, 100*waypoint_get_x(wp), 100*waypoint_get_y(wp));
+    PRINT("Wp %i position (%f, %f) \n ", wp, waypoint_get_x(wp), waypoint_get_y(wp));
 }
 
 void print_point_pos(struct EnuCoor_i* point){
-    PRINT("\n Point position : (%i, %i) ", point->x, point->y);
+    PRINT("\n Point position : (%f, %f) ", POS_FLOAT_OF_BFP(point->x), POS_FLOAT_OF_BFP(point->y));
 }
 
 typedef struct Node{
@@ -183,24 +183,32 @@ void block_path(Route* route, Node* point_1, Node* point_2){
 }
 
 Path find_path(Route* route, Node* point_start, Node* point_end){
-//    PRINT("FINDING PATH FROM %c to %c", point_start->name, point_end->name);
+    PRINT("FINDING PATH FROM %c to %c", point_start->name, point_end->name);
     dijkstra(route->graph, point_start->name, point_end->name);
-//    PRINT("\nDIJKSRA RUNS\n");
+    PRINT("\nDIJKSRA RUNS\n");
     Path path = get_path(route->graph, point_end->name);
     return path;
 }
 
+
 void load_path(Route* route, Path* path){
-//    PRINT("INSIDE \n");
+//    PRINT("INSIDE \n")
+    Node* target;
     route->current_path = path;
     path->target_node = 1;
+    target = find_node(route->list_nodes, path->path[path->target_node]);
 //    PRINT("Setting target \n");
-    set_target(find_node(route->list_nodes, path->path[path->target_node]));
+    set_target(target);
 }
 
-void load_next_wp(Route* route){
+Node* next_in_route(Route *route){
+    return find_node(route->list_nodes, route->current_path->path[route->current_path->target_node]);
+}
+
+void load_next_wp(Route* route, Node* target){
     route->current_path->target_node += 1;
-    set_target(find_node(route->list_nodes, route->current_path->path[route->current_path->target_node]));
+    target = find_node(route->list_nodes, route->current_path->path[route->current_path->target_node]);
+    set_target(target);
 }
 
 bool completed_path(Route* route){
@@ -209,14 +217,19 @@ bool completed_path(Route* route){
 
 struct EnuCoor_i get_wp_pos_enui(uint8_t wp_id){
     struct EnuCoor_i point;
-    PRINT("\n X Y (%f, %f)\n", waypoints[wp_id].enu_f.x, waypoints[wp_id].enu_f.y);
     point.x = waypoints[wp_id].enu_i.x;
     point.y = waypoints[wp_id].enu_i.y;
+    point.z = waypoints[wp_id].enu_i.z;
     return point;
 }
 
-bool close_to_target(Node* target){
-    return get_dist2_to_point(&target->position) < 0.5*0.5;
+bool close_to_node(Node *target) {
+    return get_dist2_to_point(&target->position) < 0.5 * 0.5;
+}
+
+bool close_to_wp(uint8_t wp) {
+    struct EnuCoor_i pos_wp = get_wp_pos_enui(wp);
+    return get_dist2_to_point(&pos_wp) < 0.2 * 0.2;
 }
 
 int select_rand_target(int avoid_this_num){
@@ -275,7 +288,8 @@ void orange_avoider_init() {
     Node home = {.name = 'e', .position = *stateGetPositionEnu_i()};
     last_node = home;
     PRINT("SELECTING RANDOM TARGET");
-    target_node = *find_node(route.list_nodes, select_rand_target(-1));
+    target_node = *find_node(route.list_nodes, 2 + 'a');
+    // init value
     PRINT("\nnode name taraget %c\n", target_node.name);
     PRINT("\nFOUND TArget node\n");
     add_path(&route, last_node, target_node);
@@ -302,6 +316,7 @@ void test_paths(){
 }
 
 void orange_avoider_periodic() {
+
     struct EnuCoor_i wp_goal_pos = get_wp_pos_enui(WP_GOAL);
     PRINT("heading %i", nav_heading);
     // printf causes segmentation fautls apparently
@@ -311,20 +326,21 @@ void orange_avoider_periodic() {
     }
     if (first_run){
         load_path(&route, &current_path);
+        target_node = *next_in_route(&route);
         first_run = 0;
     }
     // compute current color thresholds
     int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
 
     VERBOSE_PRINT("Color_count: %d  threshold: %d state: %d \n", color_count, color_count, navigation_state);
-
+    PRINT("\nCURRENT POSITION (%f, %f) \n", stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y);
     // update our safe confidence using color threshold
     if(color_count < color_count_threshold){
         obstacle_free_confidence++;
     } else {
         obstacle_free_confidence -= 2;  // be more cautious with positive obstacle detections
     }
-    PRINT("Obstacel free confidence %i", obstacle_free_confidence);
+    PRINT("\n Obstacel free confidence %i \n", obstacle_free_confidence);
     Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
 
     float moveDistance = fminf(maxDistance, 0.2f * obstacle_free_confidence);
@@ -339,43 +355,61 @@ void orange_avoider_periodic() {
             }
             print_waypoint_pos(WP_GOAL);
             print_point_pos(&target_node.position);
-            PRINT("\n Distance to target : %f\n", get_dist2_to_point(&target_node));
-            if (close_to_target(&target_node)){
+            print_point_pos(stateGetPositionEnu_i());
+            PRINT("\n Distance to target : %f\n", get_dist2_to_point(&target_node.position));
+            if (close_to_node(&target_node)){
+                last_node = target_node;
                 PRINT("CLOSE OT TARGET \n");
                 if (completed_path(&route)){
-                    last_node = target_node;
-                    target_node = *find_node(route.list_nodes, select_rand_target(last_node.name));
-                    current_path = find_path(&route, &last_node, &target_node);
+                    PRINT("\n completed path \n");
+                    Node* next_wp = find_node(route.list_nodes, select_rand_target(-1));
+                    PRINT("\n NEXT WP: %c \n", next_wp->name);
+                    current_path = find_path(&route, &last_node, next_wp);
+                    PRINT("\n Current path found \n");
                     load_path(&route, &current_path);
+                    PRINT("\n path loaded \n");
+                    target_node = *next_in_route(&route);
+                    PRINT("\n new target node\n");
                 } else {
-                    load_next_wp(&route);
+                    // update the goal waypoint
+                    PRINT("\n next node in path");
+                    last_node = target_node;
+                    load_next_wp(&route, &target_node);
+                    target_node = *next_in_route(&route);
                 }
             }
             break;
 
         case validate_node_state: //5
             {
-            Node* deviation_node = get_target(&route); // still old target
-
-            if (close_to_target(deviation_node) && obstacle_free_confidence > 3){
-                target_node = *deviation_node;
+                PRINT("\n VALIDATION \n");
+                PRINT("\nDISTANCE %f\n", get_dist2_to_point(&deviation_node.position));
+                PRINT("\n Pos deviatyion");
+                print_point_pos(&deviation_node.position);
+                PRINT("\n Pos goal");
+                struct EnuCoor_i pos_goal = get_wp_pos_enui(WP_GOAL);
+                print_point_pos(&pos_goal);
+            if (close_to_wp(WP_GOAL) && obstacle_free_confidence > 3){
+                last_node = deviation_node;
+                set_target(&target_node);
                 navigation_state = safe_state;
-            } else{
-                navigation_state = rerouting_state;
             }
             break;
         }
         case rerouting_state: //4
-
+            print_graph(route.graph);
             moveWaypointForward(WP_TRAJECTORY, 1.5f * moveDistance);
             if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
                 navigation_state = out_of_bounds_state;
             } else if (obstacle_free_confidence  <  1){
+                PRINT("\nOBSTACLE FREE CONFIDENCE %i\n", obstacle_free_confidence);
                 navigation_state = obstacle_found_state;
             } else {
                 moveWaypointForward(WP_GOAL, moveDistance);
-                if (obstacle_free_confidence > 3){
-                    Node deviation_node = {.name = get_new_node_name(route.list_nodes), .position = get_wp_pos_enui(WP_GOAL)};
+                if (obstacle_free_confidence > 3) {
+                    PRINT("PRINT REPOSITIONING DEVIATION NODE;");
+                    deviation_node.name = get_new_node_name(route.list_nodes);
+                    deviation_node.position = get_wp_pos_enui(WP_GOAL);
 //                    PRINT("\nLAST NODE %c, TARGET NODE %c, DEVIATION %c\n", last_node.name, target_node.name, deviation_node.name);
                     add_path(&route, last_node, deviation_node);
 //                    PRINT("\nDISTANCE NODES last deviation %f\n", distancePoints(&last_node.position, &deviation_node.position));
@@ -383,22 +417,19 @@ void orange_avoider_periodic() {
 //                    PRINT("\nDISTANCE NODES last target %f \n", distancePoints(&last_node.position, &target_node.position));
                     add_path(&route, deviation_node, target_node);
 //                    PRINT("\n deviation_ntion node edges %i \n", route.graph->vertices[deviation_node.name - 'a']->edges_len);
-                    Node * ptr = find_node(route.list_nodes, deviation_node.name);
 //                    PRINT("FOUDN NODE NAME %c", ptr->name);
                     block_edge(route.graph, last_node.name, target_node.name);
 //                    PRINT("\nADDED PATH AND BLOCKED EDGE\n");
-                    dijkstra(route.graph, last_node.name, target_node.name);
+//                    dijkstra(route.graph, last_node.name, target_node.name);
 //                    PRINT("\n DIJSTRA has run \n");
-                    current_path = find_path(&route, &last_node, &target_node);
-                    print_path(&current_path);
+//                    current_path = find_path(&route, &last_node, &target_node);
+//                    print_path(&current_path);
 //                    PRINT("\nLast node %c, target %c\n", last_node.name, target_node.name);
-                    load_path(&route, &current_path);
                     navigation_state = validate_node_state;
-//                    PRINT("LOADED PATH");
+//                    PRINT("LOADED PATH");}}
+                    break;
+                   }
                 }
-            }
-            break;
-
         case obstacle_found_state: //1
             PRINT("Obstacle found \n");
             waypoint_set_here_2d(WP_GOAL);
@@ -434,7 +465,7 @@ void orange_avoider_periodic() {
                 navigation_state = search_heading_state;
             }
             break;
-}
+    }
 }
 
 /*
