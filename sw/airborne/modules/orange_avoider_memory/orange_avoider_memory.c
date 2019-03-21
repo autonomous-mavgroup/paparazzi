@@ -35,10 +35,15 @@
 
 #define NAV_C // needed to get the nav funcitons like Inside...
 #include "generated/flight_plan.h"
-
+#define DIJKSTRA_DEBUG
 #define ORANGE_AVOIDER_VERBOSE TRUE
 
+#if defined(DIJKSTRA_DEBUG)
 #define PRINT(string,...) fprintf(stderr, "[orange_avoider->%s()] " string,__FUNCTION__ , ##__VA_ARGS__)
+#else
+#define PRINT(string, ...)
+#endif
+
 #if ORANGE_AVOIDER_VERBOSE
 #define VERBOSE_PRINT PRINT
 #else
@@ -164,9 +169,7 @@ int get_new_node_name(ListNodes head){
 
 
 float distancePoints(struct EnuCoor_i* start_point, struct EnuCoor_i* end_point){
-    PRINT("POSITION 1 : (%i, %i), Position 2 (%i, %i)", start_point->x, start_point->y, end_point->x, end_point->y);
     float distance = sqrt(powf(end_point->x - start_point->x, 2) + powf(end_point->y - start_point->y,2));
-    PRINT("distance %i", distance);
     return distance;
 }
 
@@ -175,7 +178,6 @@ void add_path(Route* route, Node point_1, Node point_2){
     route->list_nodes = add_node(route->list_nodes, point_1);
     route->list_nodes = add_node(route->list_nodes, point_2);
     int distance = distancePoints(&point_1.position, &point_2.position);
-//    PRINT("distance %i", distance);
     add_double_edge(route->graph, point_1.name, point_2.name, distance);
 }
 
@@ -184,21 +186,17 @@ void block_path(Route* route, Node* point_1, Node* point_2){
 }
 
 Path find_path(Route* route, Node* point_start, Node* point_end){
-    PRINT("FINDING PATH FROM %c to %c", point_start->name, point_end->name);
     dijkstra(route->graph, point_start->name, point_end->name);
-    PRINT("\nDIJKSRA RUNS\n");
     Path path = get_path(route->graph, point_end->name);
     return path;
 }
 
 
 void load_path(Route* route, Path* path){
-//    PRINT("INSIDE \n")
     Node* target;
     route->current_path = path;
     path->target_node = 1;
     target = find_node(route->list_nodes, path->path[path->target_node]);
-//    PRINT("Setting target \n");
     set_target(target);
 }
 
@@ -246,10 +244,7 @@ Node* get_target(Route* route){
 }
 
 void set_target(Node* target){
-//    PRINT("INSIDE");
-//    PRINT( "(%i, %i)", target->position.x, target->position.x);
     navigation_target = target->position;
-//    PRINT("\n NAVIGATION TARGET ASSIGNED \n");
     nav_set_heading_towards_target();
     waypoint_set_enu_i(WP_GOAL, &(target->position));
 }
@@ -299,13 +294,8 @@ void graph_init_corners(){
     target_node = *find_node(route.list_nodes, 1 + 'a');
     last_wp_route = 1;
     // init value
-    PRINT("\nnode name taraget %c\n", target_node.name);
-    PRINT("\nFOUND TArget node\n");
     add_path(&route, last_node, target_node);
-    PRINT("\nADDED TARGE PATH\n");
     current_path = find_path(&route, &last_node, &target_node);
-    PRINT("\nGOING TO LOAD PATH\n");
-    PRINT("\nFinished Initialiazation \n");
 }
 
 void graph_init_test(){
@@ -324,33 +314,15 @@ void graph_init_test(){
     // set initial position
     Node home = {.name = 'c', .position = *stateGetPositionEnu_i()};
     last_node = home;
-    PRINT("SELECTING RANDOM TARGET");
     target_node = *find_node(route.list_nodes, 'b');
     last_wp_route = 1;
-    // init value
-    PRINT("\nnode name taraget %c\n", target_node.name);
-    PRINT("\nFOUND TArget node\n");
+
     add_path(&route, last_node, target_node);
-    PRINT("\nADDED TARGE PATH\n");
     current_path = find_path(&route, &last_node, &target_node);
-    PRINT("\nGOING TO LOAD PATH\n");
-    PRINT("\nFinished Initialiazation \n");
+
 }
 
 
-void test_paths(){
-    Node* a = find_node(route.list_nodes, 'a');
-    Node* b= find_node(route.list_nodes, 'b');
-    Node* c = find_node(route.list_nodes, 'c');
-    Path path = find_path(route.graph, a->name, b->name);
-    print_path(&path);
-    block_edge(route.graph, a->name, c->name);
-    Path new_path = find_path(route.graph, a->name, b->name);
-    print_path(&new_path);
-    for (int i = 0; i < 4; i++){
-        print_waypoint_pos(corner_wps[i]);
-    }
-}
 
 void orange_avoider_periodic() {
 
@@ -368,15 +340,12 @@ void orange_avoider_periodic() {
     // compute current color thresholds
     int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
 
-    VERBOSE_PRINT("Color_count: %d  threshold: %d state: %d \n", color_count, color_count, navigation_state);
-    PRINT("\nCURRENT POSITION (%f, %f) \n", stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y);
     // update our safe confidence using color threshold
     if(color_count < color_count_threshold){
         obstacle_free_confidence++;
     } else {
         obstacle_free_confidence -= 2;  // be more cautious with positive obstacle detections
     }
-    PRINT("\n Obstacel free confidence %i \n", obstacle_free_confidence);
     Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
 
     float moveDistance = fminf(maxDistance, 0.2f * obstacle_free_confidence);
@@ -384,33 +353,22 @@ void orange_avoider_periodic() {
     // FMS implementation
     switch (navigation_state){
         case safe_state: //0
-            PRINT("SAFE STATE \n");
             moveWaypointForward(WP_TRAJECTORY, 1.f * moveDistance);
             if (obstacle_free_confidence == 0){
                     navigation_state = obstacle_found_state;
             }
-            print_waypoint_pos(WP_GOAL);
-            print_point_pos(&target_node.position);
-            print_point_pos(stateGetPositionEnu_i());
-            PRINT("\n Distance to target : %f\n", get_dist2_to_point(&target_node.position));
+
             if (close_to_node(&target_node)){
                 last_node = target_node;
-                PRINT("CLOSE OT TARGET \n");
                 if (completed_path(&route)){
-                    PRINT("\n completed path \n");
                     int next_wp_route = select_rand_target(last_wp_route, number_waypoints);
                     Node* next_wp = find_node(route.list_nodes, next_wp_route + 'a');
                     last_wp_route = next_wp_route;
-                    PRINT("\n NEXT WP: %c \n", next_wp->name);
                     current_path = find_path(&route, &last_node, next_wp);
-                    PRINT("\n Current path found \n");
                     load_path(&route, &current_path);
-                    PRINT("\n path loaded \n");
                     target_node = *next_in_route(&route);
-                    PRINT("\n new target node\n");
                 } else {
                     // update the goal waypoint
-                    PRINT("\n next node in path");
                     last_node = target_node;
                     load_next_wp(&route, &target_node);
                     target_node = *next_in_route(&route);
@@ -420,13 +378,7 @@ void orange_avoider_periodic() {
 
         case validate_node_state: //5
             {
-                PRINT("\n VALIDATION \n");
-                PRINT("\nDISTANCE %f\n", get_dist2_to_point(&deviation_node.position));
-                PRINT("\n Pos deviatyion");
-                print_point_pos(&deviation_node.position);
-                PRINT("\n Pos goal");
                 struct EnuCoor_i pos_goal = get_wp_pos_enui(WP_GOAL);
-                print_point_pos(&pos_goal);
             if (close_to_wp(WP_GOAL) && obstacle_free_confidence > 3){
                 last_node = deviation_node;
                 set_target(&target_node);
@@ -435,41 +387,24 @@ void orange_avoider_periodic() {
             break;
         }
         case rerouting_state: //4
-            print_graph(route.graph);
             moveWaypointForward(WP_TRAJECTORY, 1.5f * moveDistance);
             if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
                 navigation_state = out_of_bounds_state;
             } else if (obstacle_free_confidence  <  1){
-                PRINT("\nOBSTACLE FREE CONFIDENCE %i\n", obstacle_free_confidence);
                 navigation_state = obstacle_found_state;
             } else {
                 moveWaypointForward(WP_GOAL, moveDistance);
                 if (obstacle_free_confidence > 3) {
-                    PRINT("PRINT REPOSITIONING DEVIATION NODE;");
                     deviation_node.name = get_new_node_name(route.list_nodes);
                     deviation_node.position = get_wp_pos_enui(WP_GOAL);
-//                    PRINT("\nLAST NODE %c, TARGET NODE %c, DEVIATION %c\n", last_node.name, target_node.name, deviation_node.name);
                     add_path(&route, last_node, deviation_node);
-//                    PRINT("\nDISTANCE NODES last deviation %f\n", distancePoints(&last_node.position, &deviation_node.position));
-//                    PRINT("\nDISTANCE NODES deviation target %f\n", distancePoints(&deviation_node.position, &target_node.position));
-//                    PRINT("\nDISTANCE NODES last target %f \n", distancePoints(&last_node.position, &target_node.position));
                     add_path(&route, deviation_node, target_node);
-//                    PRINT("\n deviation_ntion node edges %i \n", route.graph->vertices[deviation_node.name - 'a']->edges_len);
-//                    PRINT("FOUDN NODE NAME %c", ptr->name);
                     block_edge(route.graph, last_node.name, target_node.name);
-//                    PRINT("\nADDED PATH AND BLOCKED EDGE\n");
-//                    dijkstra(route.graph, last_node.name, target_node.name);
-//                    PRINT("\n DIJSTRA has run \n");
-//                    current_path = find_path(&route, &last_node, &target_node);
-//                    print_path(&current_path);
-//                    PRINT("\nLast node %c, target %c\n", last_node.name, target_node.name);
                     navigation_state = validate_node_state;
-//                    PRINT("LOADED PATH");}}
                     break;
                    }
                 }
         case obstacle_found_state: //1
-            PRINT("Obstacle found \n");
             waypoint_set_here_2d(WP_GOAL);
             waypoint_set_here_2d(WP_TRAJECTORY);
 
@@ -519,7 +454,6 @@ uint8_t increase_nav_heading(float incrementDegrees)
         // set heading
         nav_heading = ANGLE_BFP_OF_REAL(new_heading);
 
-        VERBOSE_PRINT("Increasing heading to %f\n", DegOfRad(new_heading));
         return false;
     }
 
@@ -533,9 +467,6 @@ static uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeter
         // Now determine where to place the waypoint you want to go to
         new_coor->x = stateGetPositionEnu_i()->x + POS_BFP_OF_REAL(sinf(heading) * (distanceMeters));
         new_coor->y = stateGetPositionEnu_i()->y + POS_BFP_OF_REAL(cosf(heading) * (distanceMeters));
-        VERBOSE_PRINT("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters,
-                      POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y),
-                      stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y, DegOfRad(heading));
         return false;
     }
 
@@ -544,8 +475,6 @@ static uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeter
  */
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor)
 {
-    VERBOSE_PRINT("Moving waypoint %d to x:%f y:%f\n", waypoint, POS_FLOAT_OF_BFP(new_coor->x),
-                  POS_FLOAT_OF_BFP(new_coor->y));
     waypoint_set_xy_i(waypoint, new_coor->x, new_coor->y);
     return false;
 }
@@ -569,10 +498,8 @@ uint8_t chooseRandomIncrementAvoidance(void)
     // Randomly choose CW or CCW avoiding direction
     if (rand() % 2 == 0) {
         heading_increment = 5.f;
-        VERBOSE_PRINT("Set avoidance increment to: %f\n", heading_increment);
     } else {
         heading_increment = -5.f;
-        VERBOSE_PRINT("Set avoidance increment to: %f\n", heading_increment);
     }
     return false;
 }

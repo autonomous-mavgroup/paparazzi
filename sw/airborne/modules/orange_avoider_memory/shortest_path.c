@@ -75,25 +75,19 @@ void print_graph(graph_t * g){
 }
 
 void dijkstra (graph_t *g, int a, int b) {
-//    PRINT("\nDISJSTRA INIT\n");
-//    PRINT("VERTICES LEN %i", g->vertices_len);
-//    print_graph(g);
+
     int i, j;
     a = a - 'a';
     b = b - 'a';
-//    PRINT("\nVERTICES %i-%i\n", a, b);
-//    PRINT("\nVertices len %i \n", g->vertices_len);
+
     for (i = 0; i < g->vertices_len; i++) {
-//        PRINT("\n i: %i, name %i", i, g->vertices[i]->dist);
         vertex_t *v = g->vertices[i];
         v->dist = INT_MAX;
         v->prev = 0;
         v->visited = 0;
     }
-//    PRINT("\nFINISHED INIT GRAPH\n");
     vertex_t *v = g->vertices[a];
     v->dist = 0;
-//    PRINT("\nHEAP CREATED\n");
     heap_t *h = create_heap(g->vertices_len);
     push_heap(h, a, v->dist);
     while (h->len) {
@@ -120,7 +114,6 @@ Path get_path(graph_t *g, int i) {
     i = i - 'a';
     v = g->vertices[i];
     if (v->dist == INT_MAX) {
-        printf("no path\n");
         return;
     }
     for (n = 1, u = v; u->dist; u = g->vertices[u->prev], n++);
