@@ -82,7 +82,8 @@ static void color_detection_cb(uint8_t __attribute__((unused)) sender_id,
 {
     color_count = quality;
 }
-uint8_t corner_wps[4] = {WP__OZ1, WP__OZ2, WP__OZ3, WP__OZ4};
+//uint8_t corner_wps[4] = {WP__OZ1, WP__OZ2, WP__OZ3, WP__OZ4};
+uint8_t corner_wps[2] = {WP__OZ1, WP__OZ3};
 uint8_t cyberzoo_corners[4] = {WP__CZ1, WP__CZ2, WP__CZ3, WP__CZ4};
 
 
@@ -232,10 +233,10 @@ bool close_to_wp(uint8_t wp) {
     return get_dist2_to_point(&pos_wp) < 0.2 * 0.2;
 }
 
-int select_rand_target(int avoid_this_num){
+int select_rand_target(int avoid_this_num, int number_wps){
     int num = avoid_this_num;
     while( num == avoid_this_num){
-        num = (rand() % 4) + 'a';
+        num = (rand() % number_wps);
     }
     return num;
 };
@@ -261,10 +262,17 @@ Node last_node;
 Node target_node;
 Node deviation_node;
 bool first_run = 1;
+int last_wp_route;
+int number_waypoints = 2;
 
 void orange_avoider_init() {
     srand(time(NULL));
     // Initialize initial graph
+    // bind our colorfilter callbacks to receive the color filter outputs
+    AbiBindMsgVISUAL_DETECTION(ORANGE_AVOIDER_VISUAL_DETECTION_ID, &color_detection_ev, color_detection_cb);
+}
+
+void graph_init_corners(){
     g = calloc(1, sizeof (graph_t));
     waypoints_init();
     route.graph = g;
@@ -288,7 +296,8 @@ void orange_avoider_init() {
     Node home = {.name = 'e', .position = *stateGetPositionEnu_i()};
     last_node = home;
     PRINT("SELECTING RANDOM TARGET");
-    target_node = *find_node(route.list_nodes, 2 + 'a');
+    target_node = *find_node(route.list_nodes, 1 + 'a');
+    last_wp_route = 1;
     // init value
     PRINT("\nnode name taraget %c\n", target_node.name);
     PRINT("\nFOUND TArget node\n");
@@ -297,9 +306,37 @@ void orange_avoider_init() {
     current_path = find_path(&route, &last_node, &target_node);
     PRINT("\nGOING TO LOAD PATH\n");
     PRINT("\nFinished Initialiazation \n");
-    // bind our colorfilter callbacks to receive the color filter outputs
-    AbiBindMsgVISUAL_DETECTION(ORANGE_AVOIDER_VISUAL_DETECTION_ID, &color_detection_ev, color_detection_cb);
 }
+
+void graph_init_test(){
+    g = calloc(1, sizeof (graph_t));
+    waypoints_init();
+    route.graph = g;
+    struct EnuCoor_i pos_a = get_wp_pos_enui(WP__OZ1);
+    Node a = {.name = 'a', .position = pos_a};
+    struct EnuCoor_i pos_b = get_wp_pos_enui(WP__OZ3);
+    Node b = {.name = 'b', .position = pos_b};
+
+    // Init Route
+    // add connectivity
+    add_path(&route, a, b);
+
+    // set initial position
+    Node home = {.name = 'c', .position = *stateGetPositionEnu_i()};
+    last_node = home;
+    PRINT("SELECTING RANDOM TARGET");
+    target_node = *find_node(route.list_nodes, 'b');
+    last_wp_route = 1;
+    // init value
+    PRINT("\nnode name taraget %c\n", target_node.name);
+    PRINT("\nFOUND TArget node\n");
+    add_path(&route, last_node, target_node);
+    PRINT("\nADDED TARGE PATH\n");
+    current_path = find_path(&route, &last_node, &target_node);
+    PRINT("\nGOING TO LOAD PATH\n");
+    PRINT("\nFinished Initialiazation \n");
+}
+
 
 void test_paths(){
     Node* a = find_node(route.list_nodes, 'a');
@@ -317,14 +354,13 @@ void test_paths(){
 
 void orange_avoider_periodic() {
 
-    struct EnuCoor_i wp_goal_pos = get_wp_pos_enui(WP_GOAL);
-    PRINT("heading %i", nav_heading);
     // printf causes segmentation fautls apparently
     // only evaluate our state machine if we are flying
     if(!autopilot_in_flight()){
         return;
     }
     if (first_run){
+        graph_init_test();
         load_path(&route, &current_path);
         target_node = *next_in_route(&route);
         first_run = 0;
@@ -362,7 +398,9 @@ void orange_avoider_periodic() {
                 PRINT("CLOSE OT TARGET \n");
                 if (completed_path(&route)){
                     PRINT("\n completed path \n");
-                    Node* next_wp = find_node(route.list_nodes, select_rand_target(-1));
+                    int next_wp_route = select_rand_target(last_wp_route, number_waypoints);
+                    Node* next_wp = find_node(route.list_nodes, next_wp_route + 'a');
+                    last_wp_route = next_wp_route;
                     PRINT("\n NEXT WP: %c \n", next_wp->name);
                     current_path = find_path(&route, &last_node, next_wp);
                     PRINT("\n Current path found \n");
