@@ -23,10 +23,12 @@
  * 
  */
 
+
 #ifndef GROUP10_BLA_H
 #define GROUP10_BLA_H
 
 extern void group10_bla_init(void);
+extern void group10_bla_periodic(void);
 
 #endif
 

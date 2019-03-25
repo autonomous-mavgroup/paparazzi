@@ -22,28 +22,69 @@
  * @author matteo
  * 
  */
-
+#include "modules/computer_vision/cv.h"
+#include "subsystems/abi.h"
+#include "std.h"
+#include <stdio.h>
+#include <stdbool.h>
+#include <math.h>
+#include "pthread.h"
 #include "modules/computer_vision/cv.h"
 #include "modules/group10/group10_bla.h"
-#include "modules/group10/BLA.h
+#include "modules/group10/BLA.h"
 
 #ifndef GROUP10_BLA_FPS
 #define GROUP10_BLA_FPS 0
 #endif
 PRINT_CONFIG_VAR(GROUP10_BLA_FPS)
+static struct image_t *main_func(struct image_t *img);
 
-struct image_t *group10_opencv_bla(struct image_t *img);
-int *group10_opencv_bla(struct image_t *img)
-{
-    if (img->type == IMAGE_YUV422)
-    {
-        BLA((char *) img->buf, img->w, img->h);
-    }
-}
+static pthread_mutex_t mutex;
+struct bla_object_t {
+    int32_t heading;
+    bool reached_edge;
+    bool updated;
+};
+struct bla_object_t bla_data[2];
 
 void group10_bla_init(void)
 {
-    cv_add_to_device(&OPENCVDEMO_CAMERA, group10_opencv_bla, GROUP10_BLA_FPS);
+    memset(bla_data, 0, 2*sizeof(struct bla_object_t));
+    pthread_mutex_init(&mutex, NULL);
+#ifdef COLOR_OBJECT_DETECTOR_CAMERA1
+    #ifdef COLOR_OBJECT_DETECTOR_LUM_MIN1
+
+#endif
+#ifdef COLOR_OBJECT_DETECTOR_DRAW1
+#endif
+
+  cv_add_to_device(&COLOR_OBJECT_DETECTOR_CAMERA1, main_func, COLOR_OBJECT_DETECTOR_FPS1);
+#endif
 }
 
+static struct image_t *main_func(struct image_t *img){
+    pthread_mutex_lock(&mutex);
+    bla_data[0].heading = 10;
+    if (bla_data[0].reached_edge == 0) {
+        bla_data[0].reached_edge = 1;
+    } else {
+    bla_data[0].reached_edge = 0;
+    }
+    bla_data[0].updated = true;
+    pthread_mutex_unlock(&mutex);
+}
+
+void group10_bla_periodic(void)
+{
+    static struct bla_object_t local_filters[2];
+    pthread_mutex_lock(&mutex);
+    memcpy(local_filters, bla_data, 2*sizeof(struct bla_object_t));
+    pthread_mutex_unlock(&mutex);
+
+    if(local_filters[0].updated){
+        AbiSendMsgVISUAL_DETECTION(COLOR_OBJECT_DETECTION1_ID, 0, 0,
+                                   0, 0, local_filters[0].heading, local_filters[0].reached_edge);
+        local_filters[0].updated = false;
+    }
+}
 
