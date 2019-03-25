@@ -1,0 +1,67 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="line_detector" dir="group10">
+  <doc>
+    <description>
+    </description>
+    <define name="GROUP10_LINE_DETECTOR_FPS" value="10" description="The (maximum) frequency to run the calculations at. If zero, it will max out at the camera frame rate"/>
+  </doc>
+
+  <settings>
+    <dl_settings>
+      <dl_settings NAME="LINE_DETECTOR">
+        <dl_setting var="lsd.min_u" min="0" step="1" max="225" module="modules/group10/line_detector" shortname="min_u" type="uint8" persistent="true"/>
+        <dl_setting var="lsd.max_u" min="0" step="1" max="225" module="modules/group10/line_detector" shortname="max_u" type="uint8" persistent="true"/>
+        <dl_setting var="lsd.min_v" min="0" step="1" max="225" module="modules/group10/line_detector" shortname="min_v" type="uint8" persistent="true"/>
+        <dl_setting var="lsd.max_v" min="0" step="1" max="225" module="modules/group10/line_detector" shortname="max_v" type="uint8" persistent="true"/>
+        <dl_setting var="lsd.min_y" min="0" step="1" max="225" module="modules/group10/line_detector" shortname="min_y" type="uint8" persistent="true"/>
+        <dl_setting var="lsd.max_y" min="0" step="1" max="225" module="modules/group10/line_detector" shortname="max_y" type="uint8" persistent="true"/>
+      </dl_settings>
+    </dl_settings>
+  </settings>
+
+  <header>
+    <file name="line_detector.h"/>
+  </header>
+  <init fun="group10_line_detector_init()"/>
+  <makefile target="ap">
+    <file name="line_detector.c"/>
+    <file name="line_detector_opencv.cpp"/>
+
+    <flag name="CXXFLAGS" value="I$(PAPARAZZI_SRC)/sw/ext/opencv_bebop/install_arm/include"/>
+    
+	<flag name="LDFLAGS" value="L$(PAPARAZZI_HOME)/sw/ext/opencv_bebop/install_arm/lib" />
+	<flag name="LDFLAGS" value="lopencv_world" />
+	<flag name="LDFLAGS" value="L$(PAPARAZZI_HOME)/sw/ext/opencv_bebop/install_arm/share/OpenCV/3rdparty/lib" />
+	<flag name="LDFLAGS" value="llibprotobuf" />
+	<flag name="LDFLAGS" value="llibjpeg-turbo" />
+	<flag name="LDFLAGS" value="llibpng" />
+	<flag name="LDFLAGS" value="llibtiff" />
+	<flag name="LDFLAGS" value="lzlib" />
+	<flag name="LDFLAGS" value="ltegra_hal" />
+	<flag name="LDFLAGS" value="lquirc" />
+	<flag name="LDFLAGS" value="ldl" />
+	<flag name="LDFLAGS" value="lm" />
+	<flag name="LDFLAGS" value="lpthread" />
+	<flag name="LDFLAGS" value="lrt" />
+  </makefile>
+  <makefile target="nps">
+    <file name="line_detector.c"/>
+    <file name="line_detector_opencv.cpp"/>
+
+    <flag name="CXXFLAGS" value="I$(PAPARAZZI_SRC)/sw/ext/opencv_bebop/install_pc/include"/>
+    
+    <flag name="LDFLAGS" value="L$(PAPARAZZI_HOME)/sw/ext/opencv_bebop/install_pc/lib" />
+    <flag name="LDFLAGS" value="lopencv_world" />
+    <flag name="LDFLAGS" value="L$(PAPARAZZI_HOME)/sw/ext/opencv_bebop/install_pc/share/OpenCV/3rdparty/lib" />
+    <flag name="LDFLAGS" value="lprotobuf" />
+    <flag name="LDFLAGS" value="ljpeg"/>
+    <flag name="LDFLAGS" value="lpng"/>
+    <flag name="LDFLAGS" value="ltiff"/>
+    <flag name="LDFLAGS" value="lz"/>
+    <flag name="LDFLAGS" value="ldl"/>
+    <flag name="LDFLAGS" value="lm"/>
+    <flag name="LDFLAGS" value="lpthread"/>
+    <flag name="LDFLAGS" value="lrt"/>
+  </makefile>
+</module>
