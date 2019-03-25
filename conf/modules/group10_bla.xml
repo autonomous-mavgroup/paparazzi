@@ -1,0 +1,15 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="group10_bla" dir="group10">
+  <doc>
+    <description></description>
+  </doc>
+  <header>
+    <file name="group10_bla.h"/>
+  </header>
+  <init fun="group10_bla_init()"/>
+  <makefile>
+    <file name="group10_bla.c"/>
+  </makefile>
+</module>
+
