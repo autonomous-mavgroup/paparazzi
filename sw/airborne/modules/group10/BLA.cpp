@@ -6,8 +6,9 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include "navigation.h"
 
-int BLA(void)
+int BLA(char* img, int height, int width)
 {
     return 0;
 }

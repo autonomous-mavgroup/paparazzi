@@ -258,9 +258,5 @@ void color_object_detector_periodic(void)
         0, 0, local_filters[0].color_count, 0);
     local_filters[0].updated = false;
   }
-  if(local_filters[1].updated){
-    AbiSendMsgVISUAL_DETECTION(COLOR_OBJECT_DETECTION2_ID, local_filters[1].x_c, local_filters[1].y_c,
-        0, 0, local_filters[1].color_count, 1);
-    local_filters[1].updated = false;
   }
 }

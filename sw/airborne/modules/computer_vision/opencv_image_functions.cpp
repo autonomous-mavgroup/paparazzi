@@ -90,7 +90,6 @@ void grayscale_opencv_to_yuv422(Mat image, char *img, int width, int height)
       img[index_img++] = 127;
       img[index_img++] = p[j];
 
-
     }
   }
 }
