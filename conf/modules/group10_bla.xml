@@ -8,6 +8,7 @@
     <file name="group10_bla.h"/>
   </header>
   <init fun="group10_bla_init()"/>
+  <periodic fun="group10_bla_periodic()"/>
   <makefile>
     <file name="group10_bla.c"/>
   </makefile>

@@ -71,13 +71,13 @@ bool cod_draw1 = false;
 bool cod_draw2 = false;
 
 // define global variables
-struct color_object_t {
+struct bla_object_t {
   int32_t x_c;
   int32_t y_c;
   uint32_t color_count;
   bool updated;
 };
-struct color_object_t global_filters[2];
+struct bla_object_t bla_data[2];
 
 // Function
 uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc, bool draw,
@@ -130,10 +130,10 @@ static struct image_t *object_detector(struct image_t *img, uint8_t filter)
         hypotf(x_c, y_c) / hypotf(img->w * 0.5, img->h * 0.5), RadOfDeg(atan2f(y_c, x_c)));
 
   pthread_mutex_lock(&mutex);
-  global_filters[filter-1].color_count = count;
-  global_filters[filter-1].x_c = x_c;
-  global_filters[filter-1].y_c = y_c;
-  global_filters[filter-1].updated = true;
+  bla_data[filter-1].color_count = count;
+  bla_data[filter-1].x_c = x_c;
+  bla_data[filter-1].y_c = y_c;
+  bla_data[filter-1].updated = true;
   pthread_mutex_unlock(&mutex);
 
   return img;
@@ -153,7 +153,7 @@ struct image_t *object_detector2(struct image_t *img)
 
 void color_object_detector_init(void)
 {
-  memset(global_filters, 0, 2*sizeof(struct color_object_t));
+  memset(bla_data, 0, 2*sizeof(struct bla_object_t));
   pthread_mutex_init(&mutex, NULL);
 #ifdef COLOR_OBJECT_DETECTOR_CAMERA1
 #ifdef COLOR_OBJECT_DETECTOR_LUM_MIN1
@@ -248,9 +248,9 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
 
 void color_object_detector_periodic(void)
 {
-  static struct color_object_t local_filters[2];
+  static struct bla_object_t local_filters[2];
   pthread_mutex_lock(&mutex);
-  memcpy(local_filters, global_filters, 2*sizeof(struct color_object_t));
+  memcpy(local_filters, bla_data, 2*sizeof(struct bla_object_t));
   pthread_mutex_unlock(&mutex);
 
   if(local_filters[0].updated){
