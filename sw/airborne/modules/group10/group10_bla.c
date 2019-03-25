@@ -33,77 +33,61 @@
 #include "modules/group10/group10_bla.h"
 #include "modules/group10/BLA.h"
 
+#define PRINT(string,...) fprintf(stderr, "[object_detector->%s()] " string,__FUNCTION__ , ##__VA_ARGS__)
+#if OBJECT_DETECTOR_VERBOSE
+#define VERBOSE_PRINT PRINT
+#else
+#define VERBOSE_PRINT(...)
+#endif
+
 #ifndef GROUP10_BLA_FPS
 #define GROUP10_BLA_FPS 0
 #endif
 PRINT_CONFIG_VAR(GROUP10_BLA_FPS)
+VERBOSE_PRINT("module group 10")
 static struct image_t *send_numbers(struct image_t *img);
 
 static pthread_mutex_t mutex;
-struct color_object_t {
-    int32_t x_c;
-    int32_t y_c;
-    uint32_t color_count;
+struct blaData {
+    int32_t heading;
+    bool reached_edge;
     bool updated;
 };
-struct color_object_t global_filters[2];
+struct blaData* bla_data;
 
 void group10_bla_init(void)
 {
-    memset(global_filters, 0, 2*sizeof(struct color_object_t));
+    VERBOSE_PRINT("INITIALIZING CV MODULE");
+    memset(bla_data, 0, sizeof(struct blaData));
     pthread_mutex_init(&mutex, NULL);
-#ifdef COLOR_OBJECT_DETECTOR_CAMERA1
-    #ifdef COLOR_OBJECT_DETECTOR_LUM_MIN1
+#ifdef BLA_CAMERA1
+    #ifdef BLA_CAMERA1
 
 #endif
-#ifdef COLOR_OBJECT_DETECTOR_DRAW1
+  cv_add_to_device(&BLA_CAMERA1, send_numbers, GROUP10_BLA_FPS);
 #endif
 
-  cv_add_to_device(&COLOR_OBJECT_DETECTOR_CAMERA1, send_numbers, COLOR_OBJECT_DETECTOR_FPS1);
-#endif
-
-#ifdef COLOR_OBJECT_DETECTOR_CAMERA2
-    #ifdef COLOR_OBJECT_DETECTOR_LUM_MIN2
-  cod_lum_min2 = COLOR_OBJECT_DETECTOR_LUM_MIN2;
-  cod_lum_max2 = COLOR_OBJECT_DETECTOR_LUM_MAX2;
-  cod_cb_min2 = COLOR_OBJECT_DETECTOR_CB_MIN2;
-  cod_cb_max2 = COLOR_OBJECT_DETECTOR_CB_MAX2;
-  cod_cr_min2 = COLOR_OBJECT_DETECTOR_CR_MIN2;
-  cod_cr_max2 = COLOR_OBJECT_DETECTOR_CR_MAX2;
-#endif
-#ifdef COLOR_OBJECT_DETECTOR_DRAW2
-  cod_draw2 = COLOR_OBJECT_DETECTOR_DRAW2;
-#endif
-
-  cv_add_to_device(&COLOR_OBJECT_DETECTOR_CAMERA2, object_detector2, COLOR_OBJECT_DETECTOR_FPS2);
-#endif
 }
 
 static struct image_t *send_numbers(struct image_t *img){
     pthread_mutex_lock(&mutex);
-    global_filters[0].color_count = 0;
-    global_filters[0].x_c = 0;
-    global_filters[0].y_c = 0;
-    global_filters[0].updated = true;
+    bla_data->heading = 10;
+    bla_data->reached_edge = false;
+    bla_data->updated = true;
     pthread_mutex_unlock(&mutex);
 }
 
-void group10_bla_peridic(void)
+void group10_bla_periodic(void)
 {
-    static struct color_object_t local_filters[2];
+    static struct blaData* local_bla_data;
     pthread_mutex_lock(&mutex);
-    memcpy(local_filters, global_filters, 2*sizeof(struct color_object_t));
+    memcpy(local_bla_data, bla_data, sizeof(struct blaData));
     pthread_mutex_unlock(&mutex);
 
-    if(local_filters[0].updated){
-        AbiSendMsgVISUAL_DETECTION(COLOR_OBJECT_DETECTION1_ID, local_filters[0].x_c, local_filters[0].y_c,
-                                   0, 0, local_filters[0].color_count, 0);
-        local_filters[0].updated = false;
-    }
-    if(local_filters[1].updated){
-        AbiSendMsgVISUAL_DETECTION(COLOR_OBJECT_DETECTION2_ID, local_filters[1].x_c, local_filters[1].y_c,
-                                   0, 0, local_filters[1].color_count, 1);
-        local_filters[1].updated = false;
+    if(local_bla_data->updated){
+        AbiSendMsgVISUAL_DETECTION(COLOR_OBJECT_DETECTION1_ID, 0, 0,
+                                   0, 0, local_bla_data->heading, 0);
+        local_bla_data->updated = false;
     }
 }
 

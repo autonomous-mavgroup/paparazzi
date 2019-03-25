@@ -54,7 +54,8 @@ float oa_color_count_frac = 0.18f;
 
 // define and initialise global variables
 enum navigation_state_t navigation_state = SEARCH_FOR_SAFE_HEADING;
-int32_t color_count = 0;               // orange color count from color filter for obstacle detection
+int32_t heading = 0;               // orange color count from color filter for obstacle detection
+bool reached_edge = false;
 int16_t obstacle_free_confidence = 0;   // a measure of how certain we are that the way ahead is safe.
 float heading_increment = 5.f;          // heading angle increment [deg]
 float maxDistance = 2.25;               // max waypoint displacement [m]
@@ -68,9 +69,10 @@ static abi_event color_detection_ev;
 static void color_detection_cb(uint8_t __attribute__((unused)) sender_id,
                                int16_t __attribute__((unused)) pixel_x, int16_t __attribute__((unused)) pixel_y,
                                int16_t __attribute__((unused)) pixel_width, int16_t __attribute__((unused)) pixel_height,
-                               int32_t quality, int16_t __attribute__((unused)) extra)
+                               int32_t quality, int16_t extra)
 {
-  color_count = quality;
+  heading = quality;
+  reached_edge = extra;
 }
 
 /*
@@ -79,6 +81,7 @@ static void color_detection_cb(uint8_t __attribute__((unused)) sender_id,
 void orange_avoider_init(void)
 {
   // Initialise random values
+  VERBOSE_PRINT("INITIALIZING");
   srand(time(NULL));
   chooseRandomIncrementAvoidance();
 
@@ -97,19 +100,12 @@ void orange_avoider_periodic(void)
   }
 
   // compute current color thresholds
-  int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
 
-  VERBOSE_PRINT("Color_count: %d  threshold: %d state: %d \n", color_count, color_count, navigation_state);
+  VERBOSE_PRINT("Heading: %d  reached edge: %d state: %d \n", heading, reached_edge, navigation_state);
 
   // update our safe confidence using color threshold
-  if(color_count < color_count_threshold){
-    obstacle_free_confidence++;
-  } else {
-    obstacle_free_confidence -= 2;  // be more cautious with positive obstacle detections
-  }
 
   // bound obstacle_free_confidence
-  Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
 
   float moveDistance = fminf(maxDistance, 0.2f * obstacle_free_confidence);
 
@@ -135,7 +131,6 @@ void orange_avoider_periodic(void)
       chooseRandomIncrementAvoidance();
 
       navigation_state = SEARCH_FOR_SAFE_HEADING;
-
       break;
     case SEARCH_FOR_SAFE_HEADING:
       increase_nav_heading(heading_increment);

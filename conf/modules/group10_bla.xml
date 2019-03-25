@@ -2,14 +2,19 @@
 
 <module name="group10_bla" dir="group10">
   <doc>
-    <description></description>
+    <description>Color Object Detector
+    Detects an object by a continuous color. Optionally draws on image.
+    </description>
+
+    <define name="BLA_CAMERA1" value="front_camera|bottom_camera" description="Video device to use"/>
+      <define name="GROUP10_BLA_FPS" value="0" description="Desired FPS (0: camera rate)"/>
   </doc>
   <header>
     <file name="group10_bla.h"/>
   </header>
   <init fun="group10_bla_init()"/>
-  <makefile>
+  <periodic fun="group10_bla_periodic()" freq="50"/>
+  <makefile target="ap|nps">
     <file name="group10_bla.c"/>
   </makefile>
 </module>
-
