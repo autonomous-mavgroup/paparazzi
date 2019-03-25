@@ -11,6 +11,7 @@
     <configure name="VIEWVIDEO_HOST" value="192.168.1.255" description="GCS IP (default: MODEM_HOST)"/>
     <configure name="VIEWVIDEO_PORT_OUT" value="5000" description="Port (default: 5000)"/>
     <configure name="VIEWVIDEO_PORT2_OUT" value="6000" description="Port (default: 6000)"/>
+    <configure name="VIEWVIDEO_DEBUG_OUT" value="7000" description="Port (default: 7000)"/>
     <configure name="VIEWVIDEO_BROADCAST" value="FALSE|TRUE" description="Enable broadcast of image stream (default: TRUE)"/>
 
     <define name="VIEWVIDEO_CAMERA" value="front_camera|bottom_camera" description="Video device to use"/>
