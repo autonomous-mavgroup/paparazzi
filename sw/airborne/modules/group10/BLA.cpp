@@ -101,10 +101,10 @@ std::array<int, 2> find_safe_vertical(const cv::Mat &sum_arr, const int &line_sk
 }
 
 
-float new_heading(const std::array<int, 2> &grid_size, const int &vertical, const float &FOV_x)
+int new_heading(const std::array<int, 2> &grid_size, const int &vertical, const float &FOV_x)
 {
     int px_from_center = vertical - grid_size[1] / 2;
-    float angle_from_center = 0.5*FOV_x * (px_from_center / (grid_size[1]/2));
+    int angle_from_center = 0.5*FOV_x * (px_from_center / (grid_size[1]/2));
 
     return angle_from_center;
 }
@@ -156,7 +156,7 @@ BLA_ret BLA(char *img, int height, int width)
 
     std::array<int, 2> safe_point = find_safe_vertical(sum_arr, LINE_SKIP, height, width);
 
-    float heading;
+    int heading;
     bool edge_reached;
     if (safe_point[0] != -1)
     {
