@@ -146,7 +146,9 @@ BLA_ret BLA(char *img, int height, int width)
     float FOV_x = 120.0f/180.0f*3.14159f;
     float FOV_y = 120.0f/180.0f*3.14159f;
 
-    cv::Mat M(height, width, CV_8UC2, img)
+    // Load frame
+    cv::Mat M(height, width, CV_8UC2, img);
+    cv::rotate(M, M, cv::ROTATE_90_COUNTERCLOCKWISE);
 
     cv::Mat filt_img = cv::Mat::ones(height, width, CV_8U);
     filt_black(M, filt_img, BLACK_THRESH);

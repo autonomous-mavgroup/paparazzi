@@ -63,13 +63,10 @@ void group10_bla_init(void)
 }
 
 static struct image_t *main_func(struct image_t *img){
+    struct BLA_ret BLA_out = BLA(img, img->h, img->w);
     pthread_mutex_lock(&mutex);
-    bla_data[0].heading = 10;
-    if (bla_data[0].reached_edge == 0) {
-        bla_data[0].reached_edge = 1;
-    } else {
-    bla_data[0].reached_edge = 0;
-    }
+    bla_data[0].heading = BLA_out.heading;
+    bla_data[0].reached_edge = BLA_out.edge_reached;
     bla_data[0].updated = true;
     pthread_mutex_unlock(&mutex);
 }
