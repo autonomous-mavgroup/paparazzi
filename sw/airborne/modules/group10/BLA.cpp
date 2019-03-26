@@ -19,9 +19,7 @@
 #define HALF_PI 1.57080
 
 
-
-void filt_black(const cv::Mat &img, cv::Mat &filt_img,
-        const int &black_thresh)
+void filt_black(const cv::Mat &img, cv::Mat &filt_img, const int &black_thresh)
 {
     for (int i = 0; i < height; i++){
         for (int j = 0; j < width; j++)
@@ -94,6 +92,11 @@ std::array<int, 2> find_safe_vertical(const cv::Mat &sum_arr, const int &line_sk
     }
 
     std::array<int, 2> ret {seq_line, (seq_start + seq_end) / 2};
+    if (seq_len < 4)
+    {
+        ret[0] = -1;
+        ret[1] = -1;
+    }
     return ret;
 }
 
@@ -153,11 +156,22 @@ BLA_ret BLA(char *img, int height, int width)
 
     std::array<int, 2> safe_point = find_safe_vertical(sum_arr, LINE_SKIP, height, width);
 
-    float heading = new_heading(grid_size, safe_point[1], FOV_x);
+    float heading;
+    bool edge_reached;
+    if (safe_point[0] != -1)
+    {
+        heading = new_heading(grid_size, safe_point[1], FOV_x);
 
-    int max_sum = GRID_Y*GRID_X;
-    bool edge_reached = edge_reached_check(sum_arr, GRID_Y, safe_point, drone_height, drone_attitude->theta,
-            max_sum, FOV_y, D_MARGIN);
+        int max_sum = GRID_Y*GRID_X;
+        edge_reached = edge_reached_check(sum_arr, GRID_Y, safe_point, drone_height, drone_attitude->theta,
+                                               max_sum, FOV_y, D_MARGIN);
+    }
+    else
+    {
+        heading = 420;
+        edge_reached = false;
+    }
+
 
     // Initialize return argument
     struct BLA_ret ret = {.heading = heading, .edge_reached = edge_reached};
