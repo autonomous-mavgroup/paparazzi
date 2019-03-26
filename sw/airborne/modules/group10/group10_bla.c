@@ -34,7 +34,7 @@
 #include "modules/group10/BLA.h"
 
 #ifndef GROUP10_BLA_FPS
-#define GROUP10_BLA_FPS 0
+#define GROUP10_BLA_FPS 5
 #endif
 PRINT_CONFIG_VAR(GROUP10_BLA_FPS)
 static struct image_t *main_func(struct image_t *img);

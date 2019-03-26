@@ -19,12 +19,27 @@
 #define HALF_PI 1.57080
 
 
+void filt_black(const cv::Mat &img, cv::Mat &filt_img, const int &black_thresh);
+
+cv::Mat find_white(const cv::Mat &filt_img, const std::array<int, 2> &grid_size, const int &height,
+                   const int &width);
+
+std::array<int, 2> find_safe_vertical(const cv::Mat &sum_arr, const int &line_skip,
+                                      const int &height, const int &width);
+
+float new_heading(const std::array<int, 2> &grid_size, const int &vertical, const float &FOV_x);
+
+bool edge_reached_check(const cv::Mat &sum_arr, const int &grid_y, const std::array<int, 2> &safe_point,
+                        const float &drone_height, const float &drone_pitch, const int &max_sum,
+                        const float &FOV_y, const double &d_margin);
+
+
 void filt_black(const cv::Mat &img, cv::Mat &filt_img, const int &black_thresh)
 {
     for (int i = 0; i < height; i++){
         for (int j = 0; j < width; j++)
         {
-            if (img[i, j, 0] < black_thresh)
+            if (img.at<uint8_t>(i, j, 0) < black_thresh)
                 filt_img[i, j] = 0;
         }
     }
@@ -41,7 +56,7 @@ cv::Mat find_white(const cv::Mat &filt_img, const std::array<int, 2> &grid_size,
     for (int i = 0; i < grid_size[0]; i++){
         for (int j = 0; j < grid_size[1]; j++)
         {
-            ret[i, j] = cv::sum(filt_img(cv::Range(i*y_step, (i+1)*y_step),
+            ret.at<uint8_t>(i, j) = cv::sum(filt_img(cv::Range(i*y_step, (i+1)*y_step),
                     cv::Range(j*x_step, (j+1)*x_step)));
         }
     }
@@ -64,13 +79,13 @@ std::array<int, 2> find_safe_vertical(const cv::Mat &sum_arr, const int &line_sk
     {
         counter = 0;
         start = 0;
-
-        for (int idx = 0; idx < width; idx++)
+        int idx;
+        for (idx = 0; idx < width; idx++)
         {
-            if (counter == 0 && sum_arr[line, idx] == 0) {
+            if (counter == 0 && sum_arr.at<uint8_t>(line, idx) == 0) {
                 start = idx;
                 counter += 1;
-            } else if (sum_arr[line, idx] == 0) {
+            } else if (sum_arr.at<uint8_t>(line, idx) == 0) {
                 counter += 1;
             } else {
                 if (counter > seq_len) {
@@ -121,7 +136,7 @@ bool edge_reached_check(const cv::Mat &sum_arr, const int &grid_y, const std::ar
     white_idx = 0;
     for (int idx = safe_point[0]; idx < grid_y; idx++)
     {
-        if (sum_arr[idx, safe_point[1]] == max_sum)
+        if (sum_arr.at<uint8_t>(idx, safe_point[1]) == max_sum)
         {
             white_idx = idx;
             break;
