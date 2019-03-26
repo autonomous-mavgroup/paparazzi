@@ -27,20 +27,21 @@ cv::Mat find_white(const cv::Mat &filt_img, const std::array<int, 2> &grid_size,
 std::array<int, 2> find_safe_vertical(const cv::Mat &sum_arr, const int &line_skip,
                                       const int &height, const int &width);
 
-float new_heading(const std::array<int, 2> &grid_size, const int &vertical, const float &FOV_x);
+int new_heading(const std::array<int, 2> &grid_size, const int &vertical, const float &FOV_x);
 
 bool edge_reached_check(const cv::Mat &sum_arr, const int &grid_y, const std::array<int, 2> &safe_point,
                         const float &drone_height, const float &drone_pitch, const int &max_sum,
                         const float &FOV_y, const double &d_margin);
 
 
-void filt_black(const cv::Mat &img, cv::Mat &filt_img, const int &black_thresh)
+void filt_black(const cv::Mat &img, cv::Mat &filt_img, const int height, const int width,
+        const int &black_thresh)
 {
     for (int i = 0; i < height; i++){
         for (int j = 0; j < width; j++)
         {
             if (img.at<uint8_t>(i, j, 0) < black_thresh)
-                filt_img[i, j] = 0;
+                filt_img.at<uint8_t>(i, j) = 0;
         }
     }
 }
@@ -52,7 +53,7 @@ cv::Mat find_white(const cv::Mat &filt_img, const std::array<int, 2> &grid_size,
     int y_step = height / grid_size[0];
     int x_step = width / grid_size[1];
 
-    cv::Mat ret = Mat::zeros(grid_size[0], grid_size[1], CV_16U)
+    cv::Mat ret = Mat::zeros(grid_size[0], grid_size[1], CV_16U);
     for (int i = 0; i < grid_size[0]; i++){
         for (int j = 0; j < grid_size[1]; j++)
         {
@@ -66,7 +67,7 @@ cv::Mat find_white(const cv::Mat &filt_img, const std::array<int, 2> &grid_size,
 
 
 std::array<int, 2> find_safe_vertical(const cv::Mat &sum_arr, const int &line_skip,
-        const int &height, const int &width)
+        const int height, const int width)
 {
     int seq_len = 0;
     int seq_start = 0;
@@ -119,7 +120,7 @@ std::array<int, 2> find_safe_vertical(const cv::Mat &sum_arr, const int &line_sk
 int new_heading(const std::array<int, 2> &grid_size, const int &vertical, const float &FOV_x)
 {
     int px_from_center = vertical - grid_size[1] / 2;
-    int angle_from_center = 0.5*FOV_x * (px_from_center / (grid_size[1]/2));
+    int angle_from_center = 0.5*FOV_x * (px_from_center / (grid_size[1]*0.5));
 
     return angle_from_center;
 }
@@ -133,7 +134,7 @@ bool edge_reached_check(const cv::Mat &sum_arr, const int &grid_y, const std::ar
     float theta = atan2(drone_height, d_img_bot + d_margin);
     float theta_px = 0.5 * grid_y * (theta / (0.5*FOV_y));
 
-    white_idx = 0;
+    int white_idx = 0;
     for (int idx = safe_point[0]; idx < grid_y; idx++)
     {
         if (sum_arr.at<uint8_t>(idx, safe_point[1]) == max_sum)
@@ -166,7 +167,7 @@ BLA_ret BLA(char *img, int height, int width)
     cv::rotate(M, M, cv::ROTATE_90_COUNTERCLOCKWISE);
 
     cv::Mat filt_img = cv::Mat::ones(height, width, CV_8U);
-    filt_black(M, filt_img, BLACK_THRESH);
+    filt_black(M, filt_img, height, width, BLACK_THRESH);
 
     std::array<int, 2> grid_size {GRID_Y, GRID_X};
     cv::Mat sum_arr = find_white(filt_img, grid_size, height, width);
