@@ -348,11 +348,12 @@ void graph_init_test(){
 }
 
 int check_obstacle_presence(){
-    int green_min_treshold = 30000;
-    int green_intermediate_treshold = 40000;
-    int black_max_treshold = 0.18f * front_camera.output_size.w * front_camera.output_size.h;
-    int orange_max_treshold = 40000;
-    if (green_count < 30000){
+    int pixels = front_camera.output_size.w * front_camera.output_size.h;
+    int green_min_treshold = 0.2 * pixels;
+    int green_intermediate_treshold = 0.3f * pixels;
+    int black_max_treshold = 0.18f * pixels;
+    int orange_max_treshold = 0.15f * pixels;
+    if (green_count < green_min_treshold){
         obstacle_free_confidence -= 1;
         return 0;
     } else{
