@@ -32,6 +32,7 @@
 #include "modules/computer_vision/cv.h"
 #include "modules/group10/group10_bla.h"
 #include "modules/group10/BLA.h"
+#include "modules/computer_vision/viewvideo.h"
 
 #ifndef GROUP10_BLA_FPS
 #define GROUP10_BLA_FPS 5
@@ -46,9 +47,11 @@ struct bla_object_t {
     bool updated;
 };
 struct bla_object_t bla_data[2];
+struct image_t out;
 
 void group10_bla_init(void)
 {
+    image_create(&out, 520, 240, IMAGE_YUV422);
     memset(bla_data, 0, 2*sizeof(struct bla_object_t));
     pthread_mutex_init(&mutex, NULL);
 #ifdef COLOR_OBJECT_DETECTOR_CAMERA1
@@ -69,12 +72,13 @@ static struct image_t *main_func(struct image_t *img){
     struct FloatEulers* drone_attitude = stateGetNedToBodyEulers_f();
     float drone_theta = drone_attitude->theta;
 
-    struct BLA_ret BLA_out = BLA(img->buf, img->h, img->w, drone_height, drone_theta);
+    struct BLA_ret BLA_out = BLA(img->buf, img->h, img->w, drone_height, drone_theta, out.buf);
     pthread_mutex_lock(&mutex);
     bla_data[0].heading = BLA_out.heading;
     bla_data[0].reached_edge = BLA_out.edge_reached;
     bla_data[0].updated = true;
     pthread_mutex_unlock(&mutex);
+    viewvideo_debug(&out);
 }
 
 void group10_bla_periodic(void)

@@ -4,7 +4,6 @@
 
 #include "BLA.h"
 
-#include "navigation.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <array>
@@ -192,7 +191,7 @@ bool edge_reached_check(const cv::Mat &sum_arr, const int &grid_y, const std::ar
 }
 
 
-BLA_ret BLA(char *img, int height, int width, float drone_height, float drone_theta)
+BLA_ret BLA(char *img, int height, int width, float drone_height, float drone_theta, char *out)
 {
     float FOV_x = 120.0f/180.0f*3.14159f;
     float FOV_y = 120.0f/180.0f*3.14159f;
@@ -202,9 +201,9 @@ BLA_ret BLA(char *img, int height, int width, float drone_height, float drone_th
     //cv::rotate(M, M, cv::ROTATE_90_COUNTERCLOCKWISE);
 
     cv::Mat filt_img = cv::Mat::ones(height, width, CV_8UC1);
-    filt_black(M, filt_img, height, width, BLACK_THRESH);
+//    filt_black(M, filt_img, height, width, BLACK_THRESH);
 
-    grayscale_opencv_to_yuv422(filt_img, img, width, height);
+    grayscale_opencv_to_yuv422(filt_img, out, width, height);
 
     std::array<int, 2> grid_size {GRID_Y, GRID_X};
 
