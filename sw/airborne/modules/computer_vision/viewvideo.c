@@ -87,6 +87,7 @@ PRINT_CONFIG_MSG("[viewvideo] Using netcat.")
 #else
 struct UdpSocket video_sock1;
 struct UdpSocket video_sock2;
+struct UdpSocket video_debug;
 PRINT_CONFIG_MSG("[viewvideo] Using RTP/UDP stream.")
 PRINT_CONFIG_VAR(VIEWVIDEO_USE_RTP)
 #endif
@@ -95,6 +96,8 @@ PRINT_CONFIG_VAR(VIEWVIDEO_USE_RTP)
 PRINT_CONFIG_VAR(VIEWVIDEO_HOST)
 PRINT_CONFIG_VAR(VIEWVIDEO_PORT_OUT)
 PRINT_CONFIG_VAR(VIEWVIDEO_PORT2_OUT)
+PRINT_CONFIG_VAR(VIEWVIDEO_DEBUG_OUT)
+
 
 // Initialize the viewvideo structure with the defaults
 struct viewvideo_t viewvideo = {
@@ -212,6 +215,16 @@ static struct image_t *viewvideo_function2(struct image_t *img)
 }
 #endif
 
+
+struct image_t *viewvideo_debug(struct image_t *img)
+{
+  static uint16_t rtp_packet_nr = 0;
+  static uint32_t rtp_frame_time = 0;
+  static struct image_t img_small = {.buf=NULL, .buf_size=0};
+  static struct image_t img_jpeg = {.buf=NULL, .buf_size=0};
+  return viewvideo_function(&video_debug, img, &rtp_packet_nr, &rtp_frame_time, &img_small, &img_jpeg);  
+}
+
 /**
  * Initialize the view video
  */
@@ -259,6 +272,11 @@ void viewvideo_init(void)
            VIEWVIDEO_PORT2_OUT);
   }
 #endif
+
+  if (udp_socket_create(&video_debug, STRINGIFY(VIEWVIDEO_HOST), 7000, -1, VIEWVIDEO_BROADCAST)) {
+    printf("[viewvideo]: failed to open view video debug socket, HOST=%s, port=%d\n", STRINGIFY(VIEWVIDEO_HOST),
+           7000);
+  }
 #endif
 
 #ifdef VIEWVIDEO_CAMERA
