@@ -67,9 +67,16 @@ uint8_t cod_cb_max2 = 0;
 uint8_t cod_cr_min2 = 0;
 uint8_t cod_cr_max2 = 0;
 
+uint8_t cod_lum_min3 = 0;
+uint8_t cod_lum_max3 = 0;
+uint8_t cod_cb_min3 = 0;
+uint8_t cod_cb_max3 = 0;
+uint8_t cod_cr_min3 = 0;
+uint8_t cod_cr_max3 = 0;
+
 bool cod_draw1 = false;
 bool cod_draw2 = false;
-
+bool cod_draw3 = false;
 // define global variables
 struct color_object_t {
   int32_t x_c;
@@ -77,7 +84,7 @@ struct color_object_t {
   uint32_t color_count;
   bool updated;
 };
-struct color_object_t global_filters[2];
+struct color_object_t global_filters[3];
 
 // Function
 uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc, bool draw,
@@ -117,6 +124,16 @@ static struct image_t *object_detector(struct image_t *img, uint8_t filter)
       cr_max = cod_cr_max2;
       draw = cod_draw2;
       break;
+  case 3:
+      PRINT("\nCASE 3\n");
+      lum_min = cod_lum_min3;
+      lum_max = cod_lum_max3;
+      cb_min = cod_cb_min3;
+      cb_max = cod_cb_max3;
+      cr_min = cod_cr_min3;
+      cr_max = cod_cr_max3;
+      draw = cod_draw3;
+      break;
     default:
       return img;
   };
@@ -151,9 +168,15 @@ struct image_t *object_detector2(struct image_t *img)
   return object_detector(img, 2);
 }
 
+struct image_t *object_detector3(struct image_t *img);
+struct image_t *object_detector3(struct image_t *img)
+{
+    return object_detector(img, 3);
+}
+
 void color_object_detector_init(void)
 {
-  memset(global_filters, 0, 2*sizeof(struct color_object_t));
+  memset(global_filters, 0, 3*sizeof(struct color_object_t));
   pthread_mutex_init(&mutex, NULL);
 #ifdef COLOR_OBJECT_DETECTOR_CAMERA1
 #ifdef COLOR_OBJECT_DETECTOR_LUM_MIN1
@@ -181,6 +204,18 @@ void color_object_detector_init(void)
   cod_draw2 = COLOR_OBJECT_DETECTOR_DRAW2;
 
   cv_add_to_device(&COLOR_OBJECT_DETECTOR_CAMERA2, object_detector2, COLOR_OBJECT_DETECTOR_FPS2);
+#endif
+
+#ifdef COLOR_OBJECT_DETECTOR_CAMERA3
+    cod_lum_min3 = COLOR_OBJECT_DETECTOR_LUM_MIN3;
+  cod_lum_max3 = COLOR_OBJECT_DETECTOR_LUM_MAX3;
+  cod_cb_min3 = COLOR_OBJECT_DETECTOR_CB_MIN3;
+  cod_cb_max3 = COLOR_OBJECT_DETECTOR_CB_MAX3;
+  cod_cr_min3 = COLOR_OBJECT_DETECTOR_CR_MIN3;
+  cod_cr_max3 = COLOR_OBJECT_DETECTOR_CR_MAX3;
+  cod_draw3 = COLOR_OBJECT_DETECTOR_DRAW3;
+
+  cv_add_to_device(&COLOR_OBJECT_DETECTOR_CAMERA3, object_detector3, COLOR_OBJECT_DETECTOR_FPS2);
 #endif
 }
 
@@ -244,9 +279,9 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
 
 void color_object_detector_periodic(void)
 {
-  static struct color_object_t local_filters[2];
+  static struct color_object_t local_filters[3];
   pthread_mutex_lock(&mutex);
-  memcpy(local_filters, global_filters, 2*sizeof(struct color_object_t));
+  memcpy(local_filters, global_filters, 3*sizeof(struct color_object_t));
   pthread_mutex_unlock(&mutex);
   if(local_filters[0].updated){
     AbiSendMsgVISUAL_DETECTION(COLOR_OBJECT_DETECTION1_ID, local_filters[0].x_c, local_filters[0].y_c,
@@ -258,4 +293,10 @@ void color_object_detector_periodic(void)
         0, 0, local_filters[1].color_count, 1);
     local_filters[1].updated = false;
   }
+
+  if(local_filters[2].updated){
+        AbiSendMsgVISUAL_DETECTION(3, local_filters[2].x_c, local_filters[2].y_c,
+                                   0, 0, local_filters[2].color_count, 2);
+        local_filters[2].updated = false;
+    }
 }

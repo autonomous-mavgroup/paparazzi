@@ -72,6 +72,7 @@ float heading_change = 0;
 enum navigation_state_t navigation_state = safe_state;
 int32_t orange_count = 0;// orange color count from color filter for obstacle detection
 int32_t green_count = 0;
+int32_t black_count = 0;
 int16_t obstacle_free_confidence = 0;   // a meagsure of how certain we are that the way ahead is safe.
 float heading_increment = 15.f;          // heading angle increment [deg]
 float maxDistance = 2.25;               // max waypoint displacement [m]
@@ -99,6 +100,14 @@ static void green_detection_cb(uint8_t __attribute__((unused)) sender_id,
                                int32_t quality, int16_t __attribute__((unused)) extra)
 {
     green_count = quality;
+}
+static abi_event black_detection_ev;
+static void black_detection_cb(uint8_t __attribute__((unused)) sender_id,
+                               int16_t __attribute__((unused)) pixel_x, int16_t __attribute__((unused)) pixel_y,
+                               int16_t __attribute__((unused)) pixel_width, int16_t __attribute__((unused)) pixel_height,
+                               int32_t quality, int16_t __attribute__((unused)) extra)
+{
+    black_count = quality;
 }
 uint8_t corner_wps[4] = {WP__OZ1, WP__OZ2, WP__OZ3, WP__OZ4};
 //uint8_t corner_wps[2] = {WP__OZ1, WP__OZ3};
@@ -271,7 +280,7 @@ Node target_node;
 Node deviation_node;
 bool first_run = 1;
 int last_wp_route;
-int number_waypoints = 2;
+int number_waypoints = 4;
 
 void orange_avoider_init() {
     srand(time(NULL));
@@ -279,6 +288,8 @@ void orange_avoider_init() {
     // bind our colorfilter callbacks to receive the color filter outputs
     AbiBindMsgVISUAL_DETECTION(ORANGE_AVOIDER_VISUAL_DETECTION_ID, &orange_detection_ev, orange_detection_cb);
     AbiBindMsgVISUAL_DETECTION(2, &green_detection_ev, green_detection_cb);
+    AbiBindMsgVISUAL_DETECTION(3, &black_detection_ev, black_detection_cb);
+
 
 }
 
