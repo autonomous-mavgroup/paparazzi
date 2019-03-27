@@ -63,7 +63,13 @@ void group10_bla_init(void)
 }
 
 static struct image_t *main_func(struct image_t *img){
-    struct BLA_ret BLA_out = BLA(img, img->h, img->w);
+    struct EnuCoor_f* drone_state = stateGetPositionEnu_f();
+    float drone_height = drone_state->z;
+
+    struct FloatEulers* drone_attitude = stateGetNedToBodyEulers_f();
+    float drone_theta = drone_attitude->theta;
+
+    struct BLA_ret BLA_out = BLA(img->buf, img->h, img->w, drone_height, drone_theta);
     pthread_mutex_lock(&mutex);
     bla_data[0].heading = BLA_out.heading;
     bla_data[0].reached_edge = BLA_out.edge_reached;

@@ -15,7 +15,7 @@ struct BLA_ret
     bool edge_reached;
 };
 
-struct BLA_ret BLA(char *img, int width, int height);
+struct BLA_ret BLA(char *img, int width, int height, float drone_height, float drone_theta);
 
 #ifdef __cplusplus
 }

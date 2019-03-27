@@ -9,23 +9,35 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <array>
 #include <cmath>
+#include <stdio.h>
+
+#define ORANGE_AVOIDER_VERBOSE TRUE
+
+#define PRINT(string,...) fprintf(stderr, "[orange_avoider->%s()] " string,__FUNCTION__ , ##__VA_ARGS__)
+#if ORANGE_AVOIDER_VERBOSE
+#define VERBOSE_PRINT PRINT
+#else
+#define VERBOSE_PRINT(...)
+#endif
 
 // ------------TUNABLE PARAMETERS-------------
-#define BLACK_THRESH 20  // filt_black
+#define BLACK_THRESH 200  // filt_black
 #define GRID_Y 30        // find_white
 #define GRID_X 54        // find_white
 #define LINE_SKIP 1      // find_safe_vertical
 #define D_MARGIN 1.5     // edge_reached_check
 #define HALF_PI 1.57080
 
+void grayscale_opencv_to_yuv422(cv::Mat image, char *img, int width, int height);
 
-void filt_black(const cv::Mat &img, cv::Mat &filt_img, const int &black_thresh);
+void filt_black(const cv::Mat &img, cv::Mat &filt_img, const int height, const int width,
+                const int &black_thresh);
 
 cv::Mat find_white(const cv::Mat &filt_img, const std::array<int, 2> &grid_size, const int &height,
                    const int &width);
 
-std::array<int, 2> find_safe_vertical(const cv::Mat &sum_arr, const int &line_skip,
-                                      const int &height, const int &width);
+std::array<int, 2> find_safe_vertical(const cv::Mat &sum_arr, const int line_skip,
+                                      const int height, const int width);
 
 int new_heading(const std::array<int, 2> &grid_size, const int &vertical, const float &FOV_x);
 
@@ -34,13 +46,41 @@ bool edge_reached_check(const cv::Mat &sum_arr, const int &grid_y, const std::ar
                         const float &FOV_y, const double &d_margin);
 
 
+void grayscale_opencv_to_yuv422(cv::Mat image, char *img, int width, int height)
+{
+    int n_rows = image.rows;
+    int n_cols = image.cols;
+
+    // If the image is one block in memory we can iterate over it all at once!
+    if (image.isContinuous()) {
+        n_cols *= n_rows;
+        n_rows = 1;
+    }
+
+    // Iterate over the image, setting only the Y value
+    // and setting U and V to 127
+    int i, j;
+    uchar *p;
+    int index_img = 0;
+    for (i = 0; i < n_rows; ++i) {
+        p = image.ptr<uchar>(i);
+        for (j = 0; j < n_cols; j++) {
+            img[index_img++] = 127;
+            img[index_img++] = p[j];
+
+        }
+    }
+}
+
+
 void filt_black(const cv::Mat &img, cv::Mat &filt_img, const int height, const int width,
         const int &black_thresh)
 {
     for (int i = 0; i < height; i++){
         for (int j = 0; j < width; j++)
         {
-            if (img.at<uint8_t>(i, j, 0) < black_thresh)
+            cv::Vec2b px = img.at<cv::Vec2b>(i,j);
+            if ((int)px[0] < black_thresh)
                 filt_img.at<uint8_t>(i, j) = 0;
         }
     }
@@ -52,13 +92,14 @@ cv::Mat find_white(const cv::Mat &filt_img, const std::array<int, 2> &grid_size,
 {
     int y_step = height / grid_size[0];
     int x_step = width / grid_size[1];
+    cv::Mat ret;
 
-    cv::Mat ret = Mat::zeros(grid_size[0], grid_size[1], CV_16U);
+    ret = cv::Mat::zeros(grid_size[0], grid_size[1], CV_8U);
     for (int i = 0; i < grid_size[0]; i++){
         for (int j = 0; j < grid_size[1]; j++)
         {
             ret.at<uint8_t>(i, j) = cv::sum(filt_img(cv::Range(i*y_step, (i+1)*y_step),
-                    cv::Range(j*x_step, (j+1)*x_step)));
+                                                     cv::Range(j*x_step, (j+1)*x_step)))[0];
         }
     }
 
@@ -66,7 +107,7 @@ cv::Mat find_white(const cv::Mat &filt_img, const std::array<int, 2> &grid_size,
 }
 
 
-std::array<int, 2> find_safe_vertical(const cv::Mat &sum_arr, const int &line_skip,
+std::array<int, 2> find_safe_vertical(const cv::Mat &sum_arr, const int line_skip,
         const int height, const int width)
 {
     int seq_len = 0;
@@ -151,27 +192,23 @@ bool edge_reached_check(const cv::Mat &sum_arr, const int &grid_y, const std::ar
 }
 
 
-BLA_ret BLA(char *img, int height, int width)
+BLA_ret BLA(char *img, int height, int width, float drone_height, float drone_theta)
 {
-    // Drone state variables
-    EnuCoor_f* drone_state = stateGetPositionEnu_f();
-    float drone_height = drone_state->z;
-
-    struct FloatEulers* drone_attitude = stateGetNedToBodyEulers_f();
-
     float FOV_x = 120.0f/180.0f*3.14159f;
     float FOV_y = 120.0f/180.0f*3.14159f;
 
     // Load frame
     cv::Mat M(height, width, CV_8UC2, img);
-    cv::rotate(M, M, cv::ROTATE_90_COUNTERCLOCKWISE);
+    //cv::rotate(M, M, cv::ROTATE_90_COUNTERCLOCKWISE);
 
-    cv::Mat filt_img = cv::Mat::ones(height, width, CV_8U);
+    cv::Mat filt_img = cv::Mat::ones(height, width, CV_8UC1);
     filt_black(M, filt_img, height, width, BLACK_THRESH);
 
-    std::array<int, 2> grid_size {GRID_Y, GRID_X};
-    cv::Mat sum_arr = find_white(filt_img, grid_size, height, width);
+    grayscale_opencv_to_yuv422(filt_img, img, width, height);
 
+    std::array<int, 2> grid_size {GRID_Y, GRID_X};
+
+    cv::Mat sum_arr = find_white(filt_img, grid_size, height, width);
     std::array<int, 2> safe_point = find_safe_vertical(sum_arr, LINE_SKIP, height, width);
 
     int heading;
@@ -181,7 +218,7 @@ BLA_ret BLA(char *img, int height, int width)
         heading = new_heading(grid_size, safe_point[1], FOV_x);
 
         int max_sum = GRID_Y*GRID_X;
-        edge_reached = edge_reached_check(sum_arr, GRID_Y, safe_point, drone_height, drone_attitude->theta,
+        edge_reached = edge_reached_check(sum_arr, GRID_Y, safe_point, drone_height, drone_theta,
                                                max_sum, FOV_y, D_MARGIN);
     }
     else
