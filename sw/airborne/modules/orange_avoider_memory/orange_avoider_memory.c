@@ -70,26 +70,38 @@ bool search_clockwise = 0;
 float heading_change = 0;
 // define and initialise global variables
 enum navigation_state_t navigation_state = safe_state;
-int32_t color_count = 0;               // orange color count from color filter for obstacle detection
-int16_t obstacle_free_confidence = 0;   // a measure of how certain we are that the way ahead is safe.
-float heading_increment = 5.f;          // heading angle increment [deg]
+int32_t orange_count = 0;// orange color count from color filter for obstacle detection
+int32_t green_count = 0;
+int16_t obstacle_free_confidence = 0;   // a meagsure of how certain we are that the way ahead is safe.
+float heading_increment = 15.f;          // heading angle increment [deg]
 float maxDistance = 2.25;               // max waypoint displacement [m]
 
 const int16_t max_trajectory_confidence = 5; // number of consecutive negative object detections to be sure we are obstacle free
 
 #ifndef ORANGE_AVOIDER_VISUAL_DETECTION_ID
+
 #define ORANGE_AVOIDER_VISUAL_DETECTION_ID ABI_BROADCAST
 #endif
-static abi_event color_detection_ev;
-static void color_detection_cb(uint8_t __attribute__((unused)) sender_id,
+
+static abi_event orange_detection_ev;
+static void orange_detection_cb(uint8_t __attribute__((unused)) sender_id,
+                                int16_t __attribute__((unused)) pixel_x, int16_t __attribute__((unused)) pixel_y,
+                                int16_t __attribute__((unused)) pixel_width,
+                                int16_t __attribute__((unused)) pixel_height,
+                                int32_t quality, int16_t __attribute__((unused)) extra)
+{
+    orange_count = quality;
+}
+static abi_event green_detection_ev;
+static void green_detection_cb(uint8_t __attribute__((unused)) sender_id,
                                int16_t __attribute__((unused)) pixel_x, int16_t __attribute__((unused)) pixel_y,
                                int16_t __attribute__((unused)) pixel_width, int16_t __attribute__((unused)) pixel_height,
                                int32_t quality, int16_t __attribute__((unused)) extra)
 {
-    color_count = quality;
+    green_count = quality;
 }
-//uint8_t corner_wps[4] = {WP__OZ1, WP__OZ2, WP__OZ3, WP__OZ4};
-uint8_t corner_wps[2] = {WP__OZ1, WP__OZ3};
+uint8_t corner_wps[4] = {WP__OZ1, WP__OZ2, WP__OZ3, WP__OZ4};
+//uint8_t corner_wps[2] = {WP__OZ1, WP__OZ3};
 uint8_t cyberzoo_corners[4] = {WP__CZ1, WP__CZ2, WP__CZ3, WP__CZ4};
 
 
@@ -265,7 +277,9 @@ void orange_avoider_init() {
     srand(time(NULL));
     // Initialize initial graph
     // bind our colorfilter callbacks to receive the color filter outputs
-    AbiBindMsgVISUAL_DETECTION(ORANGE_AVOIDER_VISUAL_DETECTION_ID, &color_detection_ev, color_detection_cb);
+    AbiBindMsgVISUAL_DETECTION(ORANGE_AVOIDER_VISUAL_DETECTION_ID, &orange_detection_ev, orange_detection_cb);
+    AbiBindMsgVISUAL_DETECTION(2, &green_detection_ev, green_detection_cb);
+
 }
 
 void graph_init_corners(){
@@ -332,7 +346,7 @@ void orange_avoider_periodic() {
         return;
     }
     if (first_run){
-        graph_init_test();
+        graph_init_corners();
         load_path(&route, &current_path);
         target_node = *next_in_route(&route);
         first_run = 0;
@@ -341,7 +355,7 @@ void orange_avoider_periodic() {
     int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
     VERBOSE_PRINT("Current state %d", navigation_state);
     // update our safe confidence using color threshold
-    if(color_count < color_count_threshold){
+    if(orange_count < color_count_threshold){
         obstacle_free_confidence++;
     } else {
         obstacle_free_confidence -= 2;  // be more cautious with positive obstacle detections

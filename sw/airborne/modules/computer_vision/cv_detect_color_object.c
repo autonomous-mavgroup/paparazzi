@@ -172,17 +172,13 @@ void color_object_detector_init(void)
 #endif
 
 #ifdef COLOR_OBJECT_DETECTOR_CAMERA2
-#ifdef COLOR_OBJECT_DETECTOR_LUM_MIN2
   cod_lum_min2 = COLOR_OBJECT_DETECTOR_LUM_MIN2;
   cod_lum_max2 = COLOR_OBJECT_DETECTOR_LUM_MAX2;
   cod_cb_min2 = COLOR_OBJECT_DETECTOR_CB_MIN2;
   cod_cb_max2 = COLOR_OBJECT_DETECTOR_CB_MAX2;
   cod_cr_min2 = COLOR_OBJECT_DETECTOR_CR_MIN2;
   cod_cr_max2 = COLOR_OBJECT_DETECTOR_CR_MAX2;
-#endif
-#ifdef COLOR_OBJECT_DETECTOR_DRAW2
   cod_draw2 = COLOR_OBJECT_DETECTOR_DRAW2;
-#endif
 
   cv_add_to_device(&COLOR_OBJECT_DETECTOR_CAMERA2, object_detector2, COLOR_OBJECT_DETECTOR_FPS2);
 #endif
@@ -252,13 +248,13 @@ void color_object_detector_periodic(void)
   pthread_mutex_lock(&mutex);
   memcpy(local_filters, global_filters, 2*sizeof(struct color_object_t));
   pthread_mutex_unlock(&mutex);
-
   if(local_filters[0].updated){
     AbiSendMsgVISUAL_DETECTION(COLOR_OBJECT_DETECTION1_ID, local_filters[0].x_c, local_filters[0].y_c,
         0, 0, local_filters[0].color_count, 0);
     local_filters[0].updated = false;
   }
   if(local_filters[1].updated){
+      PRINT("SENDING FILTER 1");
     AbiSendMsgVISUAL_DETECTION(COLOR_OBJECT_DETECTION2_ID, local_filters[1].x_c, local_filters[1].y_c,
         0, 0, local_filters[1].color_count, 1);
     local_filters[1].updated = false;
