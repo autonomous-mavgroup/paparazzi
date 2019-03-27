@@ -347,7 +347,23 @@ void graph_init_test(){
 
 }
 
-
+int check_obstacle_presence(){
+    int green_min_treshold = 30000;
+    int green_intermediate_treshold = 40000;
+    int black_max_treshold = 0.18f * front_camera.output_size.w * front_camera.output_size.h;
+    int orange_max_treshold = 40000;
+    if (green_count < 30000){
+        obstacle_free_confidence -= 1;
+        return 0;
+    } else{
+        if (orange_count > orange_max_treshold){
+            obstacle_free_confidence -= 2;
+            return 0;
+        } else if (black_count > black_max_treshold && green_count < green_intermediate_treshold){
+            obstacle_free_confidence -= 2;
+        }
+    }
+}
 
 void orange_avoider_periodic() {
 
@@ -366,11 +382,7 @@ void orange_avoider_periodic() {
     int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
     VERBOSE_PRINT("Current state %d", navigation_state);
     // update our safe confidence using color threshold
-    if(orange_count < color_count_threshold){
-        obstacle_free_confidence++;
-    } else {
-        obstacle_free_confidence -= 2;  // be more cautious with positive obstacle detections
-    }
+    check_obstacle_presence();
     Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
 
     float moveDistance = fminf(maxDistance, 0.2f * obstacle_free_confidence);
