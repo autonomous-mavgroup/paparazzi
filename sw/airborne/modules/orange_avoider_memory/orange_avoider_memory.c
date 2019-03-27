@@ -66,7 +66,8 @@ enum navigation_state_t {
 
 // define settings
 float oa_color_count_frac = 0.18f;
-
+bool search_clockwise = 0;
+float heading_change = 0;
 // define and initialise global variables
 enum navigation_state_t navigation_state = safe_state;
 int32_t color_count = 0;               // orange color count from color filter for obstacle detection
@@ -290,7 +291,6 @@ void graph_init_corners(){
     // set initial position
     Node home = {.name = 'e', .position = *stateGetPositionEnu_i()};
     last_node = home;
-    PRINT("SELECTING RANDOM TARGET");
     target_node = *find_node(route.list_nodes, 1 + 'a');
     last_wp_route = 1;
     // init value
@@ -339,7 +339,7 @@ void orange_avoider_periodic() {
     }
     // compute current color thresholds
     int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
-
+    VERBOSE_PRINT("Current state %d", navigation_state);
     // update our safe confidence using color threshold
     if(color_count < color_count_threshold){
         obstacle_free_confidence++;
@@ -410,26 +410,34 @@ void orange_avoider_periodic() {
 
             // randomly select new search direction
             chooseRandomIncrementAvoidance();
-
+            heading_change = 0;
             navigation_state = search_heading_state;
             break;
 
         case search_heading_state: //2
-            increase_nav_heading(heading_increment);
-
-            // make sure we have a couple of good readings before declaring the way safe
             if (obstacle_free_confidence >= 2){
                 navigation_state = rerouting_state;
             }
+
+            if (fabs(heading_change) > 90.){
+                search_clockwise = (search_clockwise + 1) % 2;
+            }
+            increase_nav_heading(heading_increment);
+
+            // make sure we have a couple of good readings before declaring the way safe
+
             break;
 
         case out_of_bounds_state: //3
+            if (fabs(heading_change) > 90.){
+                search_clockwise = (search_clockwise + 1) % 2;
+            }
             increase_nav_heading(heading_increment);
-            moveWaypointForward(WP_TRAJECTORY, 1.5f);
+            moveWaypointForward(WP_TRAJECTORY, 1.f);
 
             if (InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
                 // add offset to head back into arena
-                increase_nav_heading(heading_increment);
+//                increase_nav_heading(heading_increment);
 
                 // reset safe counter
                 obstacle_free_confidence = 0;
@@ -496,10 +504,10 @@ uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters)
 uint8_t chooseRandomIncrementAvoidance(void)
 {
     // Randomly choose CW or CCW avoiding direction
-    if (rand() % 2 == 0) {
-        heading_increment = 5.f;
+    if (search_clockwise) {
+        heading_increment = 15.f;
     } else {
-        heading_increment = -5.f;
+        heading_increment = -15.f;
     }
     return false;
 }
