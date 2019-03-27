@@ -74,7 +74,7 @@ int32_t orange_count = 0;// orange color count from color filter for obstacle de
 int32_t green_count = 0;
 int32_t black_count = 0;
 int16_t obstacle_free_confidence = 0;   // a meagsure of how certain we are that the way ahead is safe.
-float heading_increment = 15.f;          // heading angle increment [deg]
+float heading_increment = 90.f;          // heading angle increment [deg]
 float maxDistance = 2.25;               // max waypoint displacement [m]
 
 const int16_t max_trajectory_confidence = 5; // number of consecutive negative object detections to be sure we are obstacle free
@@ -109,8 +109,8 @@ static void black_detection_cb(uint8_t __attribute__((unused)) sender_id,
 {
     black_count = quality;
 }
-uint8_t corner_wps[4] = {WP__OZ1, WP__OZ2, WP__OZ3, WP__OZ4};
-//uint8_t corner_wps[2] = {WP__OZ1, WP__OZ3};
+//uint8_t corner_wps[4] = {WP_0, WP_1, WP_2, WP_3};
+uint8_t corner_wps[2] = {WP_1, WP_3};
 uint8_t cyberzoo_corners[4] = {WP__CZ1, WP__CZ2, WP__CZ3, WP__CZ4};
 
 
@@ -280,7 +280,7 @@ Node target_node;
 Node deviation_node;
 bool first_run = 1;
 int last_wp_route;
-int number_waypoints = 4;
+int number_waypoints = 2;
 
 void orange_avoider_init() {
     srand(time(NULL));
@@ -297,15 +297,15 @@ void graph_init_corners(){
     g = calloc(1, sizeof (graph_t));
     waypoints_init();
     route.graph = g;
-    PRINT("FUNC X : %f \n", waypoint_get_x(WP__OZ1));
-    struct EnuCoor_i pos_a = get_wp_pos_enui(WP__OZ1);
+    PRINT("FUNC X : %f \n", waypoint_get_x(WP_0));
+    struct EnuCoor_i pos_a = get_wp_pos_enui(WP_0);
     PRINT("Position x y : (%i, %i)", pos_a.x, pos_a.y);
     Node a = {.name = 'a', .position = pos_a};
-    struct EnuCoor_i pos_b = get_wp_pos_enui(WP__OZ2);
+    struct EnuCoor_i pos_b = get_wp_pos_enui(WP_1);
     Node b = {.name = 'b', .position = pos_b};
-    struct EnuCoor_i pos_c = get_wp_pos_enui(WP__OZ3);
+    struct EnuCoor_i pos_c = get_wp_pos_enui(WP_2);
     Node c = {.name = 'c', .position = pos_c};
-    struct EnuCoor_i pos_d = get_wp_pos_enui(WP__OZ4);
+    struct EnuCoor_i pos_d = get_wp_pos_enui(WP_3);
     Node d = {.name = 'd', .position = pos_d};
     // Init Route
     // add connectivity
@@ -327,9 +327,9 @@ void graph_init_test(){
     g = calloc(1, sizeof (graph_t));
     waypoints_init();
     route.graph = g;
-    struct EnuCoor_i pos_a = get_wp_pos_enui(WP__OZ1);
+    struct EnuCoor_i pos_a = get_wp_pos_enui(WP_0);
     Node a = {.name = 'a', .position = pos_a};
-    struct EnuCoor_i pos_b = get_wp_pos_enui(WP__OZ3);
+    struct EnuCoor_i pos_b = get_wp_pos_enui(WP_2);
     Node b = {.name = 'b', .position = pos_b};
 
     // Init Route
@@ -351,19 +351,29 @@ int check_obstacle_presence(){
     int pixels = front_camera.output_size.w * front_camera.output_size.h;
     int green_min_treshold = 0.2 * pixels;
     int green_intermediate_treshold = 0.3f * pixels;
-    int black_max_treshold = 0.18f * pixels;
+    int black_max_treshold = 0.70f * pixels;
     int orange_max_treshold = 0.15f * pixels;
+    VERBOSE_PRINT("CONFIDENT BRAH:%i ",obstacle_free_confidence);
     if (green_count < green_min_treshold){
         obstacle_free_confidence -= 1;
+        VERBOSE_PRINT("GREEN FAIL: %f \n",(100.*green_count)/pixels);
         return 0;
-    } else{
+    } else if(green_count > green_min_treshold){
         if (orange_count > orange_max_treshold){
             obstacle_free_confidence -= 2;
+            VERBOSE_PRINT("Orange FAIL: %f \n",(100.*orange_count)/pixels);
+
             return 0;
         } else if (black_count > black_max_treshold && green_count < green_intermediate_treshold){
             obstacle_free_confidence -= 2;
+            VERBOSE_PRINT("BLACK FAIL: %f \n",(100.*black_count)/pixels);
+        }
+        else {
+
+        	obstacle_free_confidence +=2;
         }
     }
+
 }
 
 void orange_avoider_periodic() {
@@ -374,14 +384,14 @@ void orange_avoider_periodic() {
         return;
     }
     if (first_run){
-        graph_init_corners();
+        graph_init_test();
         load_path(&route, &current_path);
         target_node = *next_in_route(&route);
         first_run = 0;
     }
     // compute current color thresholds
     int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
-    VERBOSE_PRINT("Current state %d", navigation_state);
+    VERBOSE_PRINT("Current state %d \n", navigation_state);
     // update our safe confidence using color threshold
     check_obstacle_presence();
     Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
@@ -417,7 +427,7 @@ void orange_avoider_periodic() {
         case validate_node_state: //5
             {
                 struct EnuCoor_i pos_goal = get_wp_pos_enui(WP_GOAL);
-            if (close_to_wp(WP_GOAL) && obstacle_free_confidence > 3){
+            if (close_to_wp(WP_GOAL)){
                 last_node = deviation_node;
                 set_target(&target_node);
                 navigation_state = safe_state;
@@ -543,9 +553,9 @@ uint8_t chooseRandomIncrementAvoidance(void)
 {
     // Randomly choose CW or CCW avoiding direction
     if (search_clockwise) {
-        heading_increment = 15.f;
+        heading_increment = 5.f;
     } else {
-        heading_increment = -15.f;
+        heading_increment = -5.f;
     }
     return false;
 }

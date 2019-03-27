@@ -23,7 +23,11 @@
     <waypoint lat="51.990640" lon="4.376734" name="_OZ2"/>
     <waypoint lat="51.990667" lon="4.376804" name="_OZ3"/>
     <waypoint lat="51.990623" lon="4.376850" name="_OZ4"/>
-  </waypoints>
+    <waypoint lat="51.9906390"	lon="4.3767569" name="0"/>
+    <waypoint lat="51.9906087"	lon="4.3767818" name="1"/>
+    <waypoint lat="51.9906252"	lon="4.3768271" name="2"/>
+    <waypoint lat="51.9906529"	lon="4.3767991" name="3"/>
+  </waypoints>	
   <sectors>
     <sector color="red" name="CyberZoo">
       <corner name="_CZ1"/>

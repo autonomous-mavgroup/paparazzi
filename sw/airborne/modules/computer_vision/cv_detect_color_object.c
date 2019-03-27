@@ -125,7 +125,7 @@ static struct image_t *object_detector(struct image_t *img, uint8_t filter)
       draw = cod_draw2;
       break;
   case 3:
-      PRINT("\nCASE 3\n");
+      //PRINT("\nCASE 3\n");
       lum_min = cod_lum_min3;
       lum_max = cod_lum_max3;
       cb_min = cod_cb_min3;
