@@ -56,7 +56,7 @@ struct image_t *detect_line(struct image_t *img)
 void group10_line_detector_init(void)
 {
   
-  image_create(&out, 240, 520, IMAGE_YUV422);
+  image_create(&out, 60, 60, IMAGE_YUV422);
   cv_add_to_device(&front_camera, detect_line, GROUP10_LINE_DETECTOR_FPS);
 }
 

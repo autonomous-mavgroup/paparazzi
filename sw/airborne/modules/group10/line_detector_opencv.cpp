@@ -68,54 +68,6 @@ void grayscale_opencv_to_yuv422(cv::Mat image, char *img, int width, int height)
   }
 }
 
-// float[3] coef(vector<cv::Vec2i> points, &float[3] coefficients )
-// {
-//   points_size = points.size();
-//   float sum_x, sum_y, sum_xy, sum_x2, sum_x2y, sum_x3, sum_x4;
-//   float S_xx, S_xy, S_xx2, S_x2y, Sx2x2, avg_y, avg_x;
-//   sum_y =0;
-//   sum_x = 0;
-//   sum_xy = 0;
-//   sum_x2 = 0;
-//   sum_x2y =0;
-//   sum_x3 = 0;
-//   sum_x4 = 0;
-//   S_xx = 0;
-//   S_xy = 0;
-//   S_xx2 = 0; 
-//   S_x2y = 0;
-//   S_x2x2 = 0; 
-//   avg_y = 0;
-//   avg_x = 0;
-  
-//   for(int i = 0; i<points_size; i++)
-//   {
-//     float x2 = points[i].x * points[i].y;
-//     sum_y   += points[i].x;
-//     sum_x   += points[i].y;
-//     sum_xy  += points[i].y * points[i].x;
-//     sum_x2  += x2;
-//     sum_x2y += x2 * points[i].x;
-//     sum_x3  += points[i].y * x2;
-//     sum_x4  += x2 * x2;
-//   }
-
-//   avg_y = sum_y / points_size;
-//   avg_x = sum_x / points_size;
-
-//   S_xx   = sum_x2  - sum_x  * avg_x;
-//   S_xy   = sum_xy  - sum_x  * avg_y;
-//   S_xx2  = sum_x3  - sum_x2 * avg_x;
-//   S_x2y  = sum_x2y - sum_x2 * avg_y;
-//   S_x2x2 = sum_x4  - sum_x2 * sum_x2 / no_points;
-//   scaler = 1.0f / (S_xx* S_x2x2 - S_xx2*S_xx2);
-
-//   coefficients[2] = (S_x2y * S_xx - S_xy * S_xx2) * scaler;
-//   coefficients[1] = (S_xy * S_x2x2 - S_x2y * S_xx2) * scaler;
-//   coefficients[0] = (sum_y - coefficients[1] * sum_x - coefficients[2] * sum_x2) / no_points;
-
-// }
-
 
 std::vector<float> diff(vector<cv::Point2i> points)
 {
@@ -124,9 +76,9 @@ std::vector<float> diff(vector<cv::Point2i> points)
   int point_size = points.size();
   for(int i = 0; i < point_size-1; i++)
   {
-    items[0] = points[i].y;
-    items[1] = points[i].x;
-    items[2] = std::abs(points[i+1].x - points[i].x)/(points[i+1].y - points[i].y); 
+    items[0] = points[i].x;
+    items[1] = points[i].y;
+    items[2] = std::abs((float)points[i+1].x - (float)points[i].x)/((float)points[i+1].y - (float)points[i].y); 
     res.push_back(items[0]);
     res.push_back(items[1]);
     res.push_back(items[2]);
@@ -139,67 +91,137 @@ std::vector<float> diff(vector<cv::Point2i> points)
   return res;
 }
 
+void uyvy_opencv_to_yuv_opencv(cv::Mat image, cv::Mat image_in, int width, int height)
+{
+//Turn the opencv RGB colored image back in a YUV colored image for the drone
+  for (int row = 0; row < height; row++) {
+    for (int col = 0; col < width; col++) {
+      // Extract pixel color from image
+      cv::Vec2b c = image_in.at<cv::Vec2b>(row, col);
+      cv::Vec2b c_m1 = image_in.at<cv::Vec2b>(row, col);
+      cv::Vec2b c_p1 = image_in.at<cv::Vec2b>(row, col);
+      if (col > 0) {
+        c_m1 = image_in.at<cv::Vec2b>(row, col - 1);
+      }
+      if (col < width) {
+        c_p1 = image_in.at<cv::Vec2b>(row, col + 1);
+      }
+      image.at<cv::Vec3b>(row, col)[0] = c[1];
+      image.at<cv::Vec3b>(row, col)[1] = col % 2 ?  c_m1[0] :  c[0];
+      image.at<cv::Vec3b>(row, col)[2] = col % 2 ?  c[0] : c_p1[0];
+
+    }
+  }
+}
+
+
+void coloryuv_opencv_to_yuv422(cv::Mat image, char *img, int width, int height)
+{
+  int byte_index = 0;
+  for(int r = 0; r < height; ++r) {
+    for(int c = 0; c < width; ++c) {
+      cv::Vec3b yuv = image.at<cv::Vec3b>(r, c);
+      if((byte_index % 4) == 0) {
+        img[byte_index++] = yuv.val[1]; // U
+      } else {
+        img[byte_index++] = yuv.val[2]; // V
+      }
+      img[byte_index++] = yuv.val[0]; // Y
+    }
+  }
+}
+
 int detect_line_opencv(char *img, int width, int height, char *out, settings set_conf)
 {
   // Create a new image, using the original bebop image.
   cv::Mat image(height, width, CV_8UC2, img);
+  cv::Mat imageyuv(height, width, CV_8UC3);
+  cv::Mat cropped;
   cv::Mat mask;
   cv::Mat maskgray;
   cv::Mat edges;
   cv::Mat res(height, width, CV_8UC2);
   // Image already in YUV format
 
-  cv::Scalar lower = cv::Scalar(  set_conf.min_u,   set_conf.min_v,   set_conf.min_y);
-  cv::Scalar upper = cv::Scalar(  set_conf.max_u,  set_conf.max_v,  set_conf.max_y);
+  uyvy_opencv_to_yuv_opencv(imageyuv, image, 240, 520);;
 
-  // cv::Scalar lower = cv::Scalar(0, 2, 70);
-  // cv::Scalar upper = cv::Scalar(181,52,111);
+
+
+
+
+  cv::Scalar lower = cv::Scalar((int)set_conf.min_y, (int)set_conf.min_u,  (int)set_conf.min_v);
+  cv::Scalar upper = cv::Scalar((int)set_conf.max_y, (int)set_conf.max_u,  (int)set_conf.max_v);
   
-  cv::inRange(image, lower, upper, mask);
-  // cv::cvtColor(mask, maskgray, CV_GRAY2YUV_Y422)
-  grayscale_opencv_to_yuv422(mask, out, width, height);
 
-  // memcpy(out, maskgray.data, 2*width*height);
-  cv::bitwise_and(image, image, image, mask);
+    // cv::Scalar lower = cv::Scalar(0, 2, 70);
+    // cv::Scalar upper = cv::Scalar(181,52,111);
+
+  // cv::Scalar lower = cv::Scalar(40, 65, 160);
+  // cv::Scalar upper = cv::Scalar(145,140,225);
+
+
+  // cv::Scalar lower = cv::Scalar(41, 53, 134);
+  // cv::Scalar upper = cv::Scalar(183,121,249);
+
+
+  // cv::Scalar lower = cv::Scalar(75, 117, 122);
+  // cv::Scalar upper = cv::Scalar(115, 151, 144);
+  // cv::Scalar lower = cv::Scalar(125 ,71, 0);
+  // cv::Scalar upper = cv::Scalar(131,116, 255);
+
+  cv::Rect crop(0, 140, 240, 240);
+  cropped = imageyuv(crop);
+  cv::resize(cropped,cropped, cv::Size(60, 60), 0, 0);
+
+  cv::Mat M = cv::getRotationMatrix2D(cv::Point(30,30), 90.0, 1);
+  cv::warpAffine(cropped, cropped, M, cv::Point(60,60));
+  // coloryuv_opencv_to_yuv422(cropped, out, 60,60);
+
+  // cv::Scalar lower = cv::Scalar(128 ,78, 0);
+  // cv::Scalar upper = cv::Scalar(133,111, 255);
+
+  cv::inRange(cropped, lower, upper, mask);
+  // cv::cvtColor(mask, maskgray)
+
+  // cv::bitwise_not(mask, mask);
+  // cv::bitwise_and(cropped, cropped, cropped, mask);
+  vector<cv::Point2i> positions;
+  grayscale_opencv_to_yuv422(mask, out, width, height);
 
   //cv::blur(mask, mask, cv::Size(2,2));
   cv::Canny(mask, edges, 300, 400);
 
-  float kernel_data[9] = {-1.0f, 2.0f, -1.0f, -1.0f, 2.0f, -1.0f, -1.0f, 2.0f, -1.0f};
-
-  cv::Mat kernel = cv::Mat(3,3,CV_32F, kernel_data);
-
-  cv::filter2D(mask, edges, -1, kernel);
-
+  // grayscale_opencv_to_yuv422(mask, out, width, height);
   cv::Size edges_size = edges.size();
 
-  int no_lines = 100;
+  // int no_lines = 100;
 
   vector<cv::Point2i> points;
 
-  int limit = (int)edges_size.height*0.4;
+  int limit = 60;
   bool found_points = false;
-  for(int i = edges_size.height-1; i > limit; i--)
+  for(int x = 0; x < 60; x++)
   {
-    for(int j = 0; j<edges_size.width; j++)
+    for(int y = 0; y<60; y++)
     {
-      if(edges.at<int>(i,j) > 0)
+      if(edges.at<uint8_t>(y, x) > 0)
       {
         int sum = 0;
-        for(int k = 0; k<4; k++)
+        for(int k = 0; k<8; k++)
         {
-          sum += mask.at<int>(i-k,j);
+          sum += mask.at<uint8_t>(y-k,x);
         }
         if(sum == 0)
         {
-          points.push_back(cv::Point2i(i,j));
+          points.push_back(cv::Point2i(x,y));
           found_points = true;
         }
       }
     }
   }
 
-  vector<cv::Point2i> positions;
+
+
   if(found_points == true)
   {
     std::vector<float> diff_points = diff(points);
@@ -211,10 +233,14 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
       {
           int x = int(diff_points[i*3+0]);
           int y = int(diff_points[i*3+1]);
+          cout << "x: " << x << " y: " << y << endl;
           positions.push_back(cv::Point2i(x,y));
+          cv::line(cropped, cv::Point(x, y), cv::Point(x, y-3), cv::Scalar(255)); 
       }
     }
   }
+
+
 
   float FOV_x = 120.0f/180.0f*3.14159f;
   float FOV_y = 120.0f/180.0f*3.14159f;
@@ -224,9 +250,10 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   {
     float theta = (positions[i].y - height/2.0f)*(FOV_y/height);
     float psi = (positions[i].x - width/2.0f)*(FOV_x/width);
-    float d = alt/(atan(theta));
+    float d = alt/(tan(theta));
     fin.push_back(cv::Point2f(d*sin(psi),d*cos(psi)));
   }
+
 
   return 0;
 }

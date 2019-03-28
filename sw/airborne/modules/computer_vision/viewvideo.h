@@ -33,7 +33,7 @@
 #define VIEW_VIDEO_H
 
 #include "std.h"
-#include<pthread.h>
+// #include<pthread.h>
 
 // Main viewvideo structure
 struct viewvideo_t {
@@ -47,7 +47,7 @@ extern struct viewvideo_t viewvideo;
 // Module functions
 extern void viewvideo_init(void);
 
-pthread_mutex_t lock_debug;
+// pthread_mutex_t lock_debug;
 extern struct image_t *viewvideo_debug(struct image_t *img);
 
 #endif /* VIEW_VIDEO_H */

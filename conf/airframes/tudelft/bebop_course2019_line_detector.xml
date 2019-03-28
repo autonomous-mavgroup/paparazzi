@@ -63,7 +63,7 @@
     <module name="ins" type="extended"/>
 
     <module name="logger_file"/>
-    <module name="line_detector"/>
+
 
     <!-- Video/Camera modules -->
     <module name="video_thread" />
@@ -71,6 +71,7 @@
       <define name="CV_AE_AWB_AV" value="1" />
       <define name="CV_AE_AWB_VERBOSE" value="0" />
     </module-->
+
     <module name="video_capture">
       <define name="VIDEO_CAPTURE_CAMERA" value="front_camera"/>
       <define name="VIDEO_CAPTURE_FPS" value="10"/>
@@ -82,6 +83,7 @@
       <define name="VIEWVIDEO_DOWNSIZE_FACTOR" value="1"/>
       <define name="VIEWVIDEO_QUALITY_FACTOR" value="40"/>
     </module>
+    <module name="line_detector"/>
   </firmware>
 
   <commands>
