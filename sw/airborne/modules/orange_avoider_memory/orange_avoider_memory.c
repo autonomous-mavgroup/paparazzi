@@ -374,13 +374,13 @@ int check_obstacle_presence(){
 	VERBOSE_PRINT("Orange : %f \n", (100. * orange_count) / pixels);
 	VERBOSE_PRINT("BLACK : %i \n", (black_count));
 	VERBOSE_PRINT("GREEN x %i  y %i", green_x, green_y);
-    int green_min_treshold = 0.15 * pixels; //0.2
+    int green_min_treshold = 0.18 * pixels; //0.2
     int green_intermediate_treshold = 0.18 * pixels; //0/3
     int black_max_treshold = 0.8 * pixels; //0.7
     int orange_intermediate_treshold = 0.13f * pixels; //0/15
     int orange_max_treshold = 0.19f * pixels;
     VERBOSE_PRINT("CONFIDENCE LEVEL :%i \n",obstacle_free_confidence);
-    if (green_count < green_min_treshold && green_x <-20){
+    if (green_count < green_min_treshold && green_x <-50){
         obstacle_free_confidence -= 5;
         VERBOSE_PRINT("GREEN FAIL: %f \n",(100.*green_count)/pixels);
         return 2;
