@@ -58,7 +58,7 @@ int32_t control = 0;               // orange color count from color filter for o
 int16_t obstacle_free_confidence = 0;   // a measure of how certain we are that the way ahead is safe.
 float heading_increment = 5.f;          // heading angle increment [deg]
 float maxDistance = 2;               // max waypoint displacement [m]
-int confidence_control = 0;
+int counter = 0;
 int turn_180 = 0;
 const int16_t max_trajectory_confidence = 5; // number of consecutive negative object detections to be sure we are obstacle free
 
@@ -96,13 +96,7 @@ void orange_avoider_periodic(void)
   if(!autopilot_in_flight()){
     return;
   }
-  if(control == 0)
-    {
-      confidence_control++;
-    }else
-    {
-      confidence_control = 0;
-    }
+    counter++;  
     
 
 
@@ -140,6 +134,7 @@ void orange_avoider_periodic(void)
       {
         heading_increment = -180.0f;
         turn_180 = 1;
+        counter = 0;
       }
       else
       {
@@ -154,11 +149,13 @@ void orange_avoider_periodic(void)
       // make sure we have a couple of good readings before declaring the way safe
         if(turn_180 == 1)
         {
-          if(confidence_control > 3)
+          if(counter > 20)
           {
             turn_180 = 0;
             navigation_state = SAFE;
+            counter = 0;
           }
+          break;
         }
         if(control == 0) 
         {
