@@ -132,9 +132,11 @@ void orange_avoider_periodic(void)
       }
       else if(control == 2)
       {
-        heading_increment = -180.0f;
+        heading_increment = 180.0f;
         turn_180 = 1;
         counter = 0;
+        increase_nav_heading(heading_increment);
+
       }
       else
       {
@@ -144,19 +146,19 @@ void orange_avoider_periodic(void)
 
       break;
     case SEARCH_FOR_SAFE_HEADING:
-      increase_nav_heading(heading_increment);
 
       // make sure we have a couple of good readings before declaring the way safe
         if(turn_180 == 1)
         {
-          if(counter > 20)
+          if(counter > 12)
           {
             turn_180 = 0;
-            navigation_state = SAFE;
+            navigation_state = OBSTACLE_FOUND;
             counter = 0;
           }
           break;
         }
+        increase_nav_heading(heading_increment);
         if(control == 0) 
         {
           navigation_state = SAFE;
@@ -199,9 +201,9 @@ static uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeter
   // Now determine where to place the waypoint you want to go to
   new_coor->x = stateGetPositionEnu_i()->x + POS_BFP_OF_REAL(sinf(heading) * (distanceMeters));
   new_coor->y = stateGetPositionEnu_i()->y + POS_BFP_OF_REAL(cosf(heading) * (distanceMeters));
-  VERBOSE_PRINT("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters,	
-                POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y),
-                stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y, DegOfRad(heading));
+  // VERBOSE_PRINT("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters,	
+                // POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y),
+                // stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y, DegOfRad(heading));
   return false;
 }
 
