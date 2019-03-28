@@ -74,7 +74,7 @@ void group10_line_detector_init(void)
 {
   control = -2; 
   pthread_mutex_init(&mutex, NULL);
-  image_create(&out, 60, 60, IMAGE_YUV422);
+  image_create(&out, 520, 60, IMAGE_YUV422);
   cv_add_to_device(&front_camera, detect_line, GROUP10_LINE_DETECTOR_FPS);
 }
 

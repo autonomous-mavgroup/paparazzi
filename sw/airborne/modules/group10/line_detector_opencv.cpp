@@ -35,8 +35,28 @@ using namespace std;
 #include <iostream>
 #include <vector>
 #include <string.h>
-std::vector<float> diff(vector<cv::Point2i> points);
 
+int scale = 4;
+
+int resize_width = 520;
+int resize_height = 60;
+
+int margin = resize_height>120 ? 0 : 120 - resize_height;
+
+int scaled_width = resize_width / scale;
+int scaled_height = resize_height / scale;
+
+int scaled_width_center = scaled_width / 2;
+int scaled_height_center = scaled_height / 2;
+
+int resize_offset_width = (520 - resize_width)/2;
+int resize_offset_height = 240 - resize_height;
+
+
+
+float threshold = 2.5;
+float obs_threshold = 4;
+float total_threshold = 30;
 
 void grayscale_opencv_to_yuv422(cv::Mat image, char *img, int width, int height)
 {
@@ -68,28 +88,6 @@ void grayscale_opencv_to_yuv422(cv::Mat image, char *img, int width, int height)
   }
 }
 
-
-std::vector<float> diff(vector<cv::Point2i> points)
-{
-  std::vector<float> res;
-  float items[3];
-  int point_size = points.size();
-  for(int i = 0; i < point_size-1; i++)
-  {
-    items[0] = points[i].x;
-    items[1] = points[i].y;
-    items[2] = std::abs((float)points[i+1].x - (float)points[i].x)/((float)points[i+1].y - (float)points[i].y); 
-    res.push_back(items[0]);
-    res.push_back(items[1]);
-    res.push_back(items[2]);
-  }
-
-  for(int i = 0; i < point_size-2; i++)
-  {
-    res[i*3+2] = abs(res[(i+1)*3+2] - res[i*3+2]);
-  }
-  return res;
-}
 
 void uyvy_opencv_to_yuv_opencv(cv::Mat image, cv::Mat image_in, int width, int height)
 {
@@ -138,61 +136,39 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   cv::Mat imageyuv(height, width, CV_8UC3);
   cv::Mat cropped;
   cv::Mat mask;
-  cv::Mat maskgray;
+  cv::Mat rotated;
+  cv::Mat scaled;
   cv::Mat edges;
   cv::Mat res(height, width, CV_8UC2);
   // Image already in YUV format
 
-  float threshold = 3;
-  float obs_threshold = 5;
-  float total_threshold = 20;
   uyvy_opencv_to_yuv_opencv(imageyuv, image, 240, 520);;
 
-  // cv::Scalar lower = cv::Scalar((int)set_conf.min_y, (int)set_conf.min_u,  (int)set_conf.min_v);
-  // cv::Scalar upper = cv::Scalar((int)set_conf.max_y, (int)set_conf.max_u,  (int)set_conf.max_v);
-  
-
-    cv::Scalar lower = cv::Scalar(56, 69, 64);
-    cv::Scalar upper = cv::Scalar(123,160,157);
-
-  // cv::Scalar lower = cv::Scalar(40, 65, 160);
-  // cv::Scalar upper = cv::Scalar(145,140,225);
+  cv::Scalar lower = cv::Scalar(56, 69, 64);
+  cv::Scalar upper = cv::Scalar(123,160,157);
 
 
-  // cv::Scalar lower = cv::Scalar(41, 53, 134);
-  // cv::Scalar upper = cv::Scalar(183,121,249);
-
-
-  // cv::Scalar lower = cv::Scalar(75, 117, 122);
-  // cv::Scalar upper = cv::Scalar(115, 151, 144);
-
-  // cv::Scalar lower = cv::Scalar(0 ,120, 120);
-  // cv::Scalar upper = cv::Scalar(171,140, 140);
-
-  cv::Rect crop(0, 140, 240, 240);
+  cv::Rect crop(0, resize_offset_width, resize_height, resize_width);
   cropped = imageyuv(crop);
-  cv::resize(cropped,cropped, cv::Size(60, 60), 0, 0);
+  
+  cv::rotate(cropped, cropped, cv::ROTATE_90_COUNTERCLOCKWISE);
 
-  cv::Mat M = cv::getRotationMatrix2D(cv::Point(30,30), 90.0, 1);
-  cv::warpAffine(cropped, cropped, M, cv::Point(60,60));
 
-  // cv::Scalar lower = cv::Scalar(128 ,78, 0);
-  // cv::Scalar upper = cv::Scalar(133,111, 255);
+  // scaled = rotated.clone();
+  // cv::resize(scaled,scaled, cv::Size(), 0.25, 0.25);
+  // coloryuv_opencv_to_yuv422(cropped, out, 520, 120);
 
   cv::inRange(cropped, lower, upper, mask);
-  // cv::bitwise_not(mask, mask);
-  // grayscale_opencv_to_yuv422(mask, out, width, height);
-
+  // cout << "scaled width: " << scaled_width_center << " scaled height: " << scaled_height_center << endl;
 
   // grayscale_opencv_to_yuv422(mask, out, width, height);
 
 
   vector<cv::Point2i> points;
 
-  bool found_points = false;
-  for(int x = 0; x < 60; x+=2)
+  for(int x = 0; x < 520; x+=10)
   {
-    for(int y = 60; y > 0; y--)
+    for(int y = 120; y > 0; y--)
     {
       if(mask.at<uint8_t>(y, x) == 0)
       {
@@ -204,7 +180,6 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
         if(sum == 0)
         {
           points.push_back(cv::Point2i(x,y));
-          found_points = true;
           break;
         }
       }
@@ -212,7 +187,7 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   }
 
 
-  coloryuv_opencv_to_yuv422(cropped, out, 60,60);
+  // coloryuv_opencv_to_yuv422(cropped, out, 60,60);
 
 
   std::vector<float> obs;
@@ -226,20 +201,20 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
 
   for(int i = 0; i<points.size(); i++)
   {
-    float theta = (points[i].y*4 - 120)*(FOV_y/240);
+    float theta = ( 60 + points[i].y)*(FOV_y/240);
     float d = alt/(tan(theta));
-    // cout << "theta:" << theta << " distance: " << d << " pixel: " << (points[i].y*4 - 120)  << endl;
+    cout << "theta: " << theta << " distance: " << d << endl;
     obs.push_back(d);
-    cv::line(cropped, cv::Point(points[i].x, points[i].y), cv::Point(points[i].x, points[i].y-4), cv::Scalar(int(d*20))); 
+    cv::line(cropped, cv::Point(points[i].x, points[i].y), cv::Point(points[i].x, points[i].y-16), cv::Scalar(255)); 
 
     if (d < threshold)
     {
       n_obs++;
-      if(12 > points[i].x)
+      if(104 > points[i].x)
       {
         n_obs_left++;
       }
-      else if(48 < points[i].x)
+      else if(416 < points[i].x)
       {
         n_obs_right++;
       }
@@ -287,8 +262,8 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
 
   }
 
+  coloryuv_opencv_to_yuv422(cropped, out, 520, 60);
 
-  coloryuv_opencv_to_yuv422(cropped, out, 60,60);
 
 
   return control;
