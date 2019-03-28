@@ -143,7 +143,9 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   cv::Mat res(height, width, CV_8UC2);
   // Image already in YUV format
 
-  float threshold = 0;
+  float threshold = 2;
+  float obs_threshold = 6;
+  float total_threshold = 20;
 
   uyvy_opencv_to_yuv_opencv(imageyuv, image, 240, 520);;
 
@@ -197,7 +199,7 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   {
     for(int y = 60; y > 0; y--)
     {
-      if(edges.at<uint8_t>(y, x) > 0)
+      if(edges.at<uint8_t>(y, x) == 0)
       {
         int sum = 0;
         for(int k = 0; k<4; k++)
@@ -207,7 +209,6 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
         if(sum == 0)
         {
           points.push_back(cv::Point2i(x,y));
-          cv::line(cropped, cv::Point(x, y), cv::Point(x, y-4), cv::Scalar(255)); 
           found_points = true;
           break;
         }
@@ -219,44 +220,75 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   coloryuv_opencv_to_yuv422(cropped, out, 60,60);
 
 
-  std::vector<float> obs_right;
-  std::vector<float> obs_left;
+  std::vector<float> obs;
 
   float FOV_y = 80.0f/180.0f*3.14159f;
   float alt = 1;
-  vector<float> fin;
 
-  float n_obs;
-  float n_obs_left;
-  float n_obs_right;
+  float n_obs = 0;
+  float n_obs_left = 0;
+  float n_obs_right = 0;
 
   for(int i = 0; i<points.size(); i++)
   {
-    float theta = (-points[i].y*4 - height/2.0f)*(FOV_y/height);
+    float theta = (points[i].y*4 - 120)*(FOV_y/240);
     float d = alt/(tan(theta));
-    cout << d << endl;
-    fin.push_back(d);
-    
-    if(12 > points[i].x)
+    cout << "theta:" << theta << " distance: " << d << " pixel: " << (points[i].y*4 - 120)  << endl;
+    obs.push_back(d);
+    cv::line(cropped, cv::Point(points[i].x, points[i].y), cv::Point(points[i].x, points[i].y-4), cv::Scalar(int(d*20))); 
+
+    if (d < threshold)
     {
-      obs_right.push_back(d);
-      if(d < threshold)
+      n_obs++;
+      if(12 > points[i].x)
       {
-        n_obs_right+=1;
+        n_obs_left++;
       }
-    }
-    else if(points[i].x > 48)
-    {
-      obs_left.push_back(d);
-      if(d < threshold)
+      else if(48 < points[i].x)
       {
-        n_obs_left+=1;
+        n_obs_right++;
       }
+
     }
-    
+  }
+
+  cout << "obs left: " << n_obs_left << endl;
+  cout << "obs right: " << n_obs_right << endl;
+
+  int control;
+  if(n_obs_left > obs_threshold && n_obs_left > n_obs_right)
+  {
+    control = 1;
+    cout << "obs left, going right" << endl;  
+  }
+  else if(n_obs_right > obs_threshold && n_obs_left < n_obs_right)
+  {
+    control = -1;
+    cout << "obs right, going left" << endl;  
+
+  }
+  else if(n_obs > total_threshold && n_obs_left > n_obs_right)
+  {
+    control = 1;
+    cout << "obs ahead, going right" << endl;  
+
+  }
+  else if(n_obs > total_threshold && n_obs_left < n_obs_right)
+  {
+    control = -1;
+    cout << "obs ahead, going left" << endl;  
+
+  } 
+  else
+  {
+    control = 0;
+    cout << "going straight" << endl;  
+
   }
 
 
+  coloryuv_opencv_to_yuv422(cropped, out, 60,60);
 
-  return 0;
+
+  return control;
 }

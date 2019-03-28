@@ -42,8 +42,6 @@ struct image_t *detect_line(struct image_t *img)
   if (img->type == IMAGE_YUV422) {
     // Call OpenCV (C++ from paparazzi C function)
     res = detect_line_opencv((char *) img->buf, img->w, img->h, (char *)out.buf, lsd);
-    printf("%p\n", (void *) &out);
-    printf("%d\n", lsd.min_y);
     viewvideo_debug(&out);
   }
 
