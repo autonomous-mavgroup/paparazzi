@@ -358,15 +358,19 @@ int check_obstacle_presence(){
     int green_min_treshold = 0 * pixels; //0.2
     int green_intermediate_treshold = 0.f * pixels; //0/3
     int black_max_treshold = 1 * pixels; //0.7
-    int orange_max_treshold = 0.18f * pixels; //0/15
+    int orange_intermediate_treshold = 0.18f * pixels; //0/15
     VERBOSE_PRINT("CONFIDENCE LEVEL :%i \n",obstacle_free_confidence);
     if (green_count < green_min_treshold){
         obstacle_free_confidence -= 1;
         VERBOSE_PRINT("GREEN FAIL: %f \n",(100.*green_count)/pixels);
         return 2;
     } else if(green_count > green_min_treshold) {
-      if (orange_count > orange_max_treshold && (orange_y < 100 && orange_y > -100)) {
-        obstacle_free_confidence -= 2;
+      if (orange_count > orange_intermediate_treshold && (orange_y < 100 && orange_y > -100)) {
+        if (orange_count > orange_max_treshold){
+          obstacle_free_confidence -= 3;
+        } else{
+        obstacle_free_confidence -= 1;
+        }
         VERBOSE_PRINT("Orange FAIL: %f \n", (100. * orange_count) / pixels);
         return 1;
       } else if (black_count > black_max_treshold && green_count < green_intermediate_treshold) {
@@ -409,6 +413,7 @@ void orange_avoider_periodic() {
     // FMS implementation
     switch (navigation_state){
         case safe_state: //0
+            heading_change = 0;
             moveWaypointForward(WP_TRAJECTORY, 1.f * moveDistance);
             if (obstacle_free_confidence < 2 && !close_to_wp(next_wp_route)){
                     navigation_state = obstacle_found_state;
@@ -481,6 +486,11 @@ void orange_avoider_periodic() {
         case search_heading_state: //2
             if (obstacle_free_confidence >= 2){
                 navigation_state = rerouting_state;
+            }
+            heading_change += heading_increment;
+            // safety measure in case it gets stuck
+            if (heading_change > 180){
+              set_target(find_node(route.list_nodes, next_wp_route + 'a'));
             }
             increase_nav_heading(heading_increment);
 
