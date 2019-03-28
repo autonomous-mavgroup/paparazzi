@@ -359,6 +359,7 @@ int check_obstacle_presence(){
     int green_intermediate_treshold = 0.f * pixels; //0/3
     int black_max_treshold = 1 * pixels; //0.7
     int orange_intermediate_treshold = 0.18f * pixels; //0/15
+    int orange_max_treshold = 0.3f * pixels;
     VERBOSE_PRINT("CONFIDENCE LEVEL :%i \n",obstacle_free_confidence);
     if (green_count < green_min_treshold){
         obstacle_free_confidence -= 1;
