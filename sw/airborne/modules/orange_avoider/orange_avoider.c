@@ -150,7 +150,7 @@ void orange_avoider_periodic(void)
       // make sure we have a couple of good readings before declaring the way safe
         if(turn_180 == 1)
         {
-          if(counter > 12)
+          if(counter > 8)
           {
             turn_180 = 0;
             navigation_state = OBSTACLE_FOUND;
