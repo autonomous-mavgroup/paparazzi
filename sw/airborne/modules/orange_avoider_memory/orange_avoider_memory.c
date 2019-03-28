@@ -50,6 +50,7 @@
 #define VERBOSE_PRINT(...)
 #endif
 uint8_t increase_nav_heading(float);
+int rotate(int);
 static uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
 uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
@@ -73,7 +74,7 @@ enum navigation_state_t navigation_state = safe_state;
 int32_t orange_count = 0;// orange color count from color filter for obstacle detection
 int32_t green_count = 0;
 int32_t black_count = 0;
-int16_t obstacle_free_confidence = 0;   // a meagsure of how certain we are that the way ahead is safe.
+int16_t obstacle_free_confidence = 5;   // a meagsure of how certain we are that the way ahead is safe.
 float heading_increment = 90.f;          // heading angle increment [deg]
 float maxDistance = 2.25;               // max waypoint displacement [m]
 
@@ -250,7 +251,7 @@ bool close_to_node(Node *target) {
 
 bool close_to_wp(uint8_t wp) {
     struct EnuCoor_i pos_wp = get_wp_pos_enui(wp);
-    return get_dist2_to_point(&pos_wp) < 0.2 * 0.2;
+    return get_dist2_to_point(&pos_wp) < 0.3 * 0.3;
 }
 
 int select_rand_target(int avoid_this_num, int number_wps){
@@ -280,6 +281,7 @@ Node target_node;
 Node deviation_node;
 bool first_run = 1;
 int last_wp_route;
+int next_wp_route;
 int number_waypoints = 2;
 
 void orange_avoider_init() {
@@ -317,7 +319,7 @@ void graph_init_corners(){
     Node home = {.name = 'e', .position = *stateGetPositionEnu_i()};
     last_node = home;
     target_node = *find_node(route.list_nodes, 1 + 'a');
-    last_wp_route = 1;
+    next_wp_route = 1;
     // init value
     add_path(&route, last_node, target_node);
     current_path = find_path(&route, &last_node, &target_node);
@@ -340,7 +342,7 @@ void graph_init_test(){
     Node home = {.name = 'c', .position = *stateGetPositionEnu_i()};
     last_node = home;
     target_node = *find_node(route.list_nodes, 'b');
-    last_wp_route = 1;
+    next_wp_route = 1;
 
     add_path(&route, last_node, target_node);
     current_path = find_path(&route, &last_node, &target_node);
@@ -349,11 +351,11 @@ void graph_init_test(){
 
 int check_obstacle_presence(){
     int pixels = front_camera.output_size.w * front_camera.output_size.h;
-    int green_min_treshold = 0.2 * pixels;
-    int green_intermediate_treshold = 0.3f * pixels;
-    int black_max_treshold = 0.70f * pixels;
-    int orange_max_treshold = 0.15f * pixels;
-    VERBOSE_PRINT("CONFIDENT BRAH:%i ",obstacle_free_confidence);
+    int green_min_treshold = 0 * pixels; //0.2
+    int green_intermediate_treshold = 0.f * pixels; //0/3
+    int black_max_treshold = 1 * pixels; //0.7
+    int orange_max_treshold = 0.2f * pixels; //0/15
+    VERBOSE_PRINT("CONFIDENT BRAH:%i \n",obstacle_free_confidence);
     if (green_count < green_min_treshold){
         obstacle_free_confidence -= 1;
         VERBOSE_PRINT("GREEN FAIL: %f \n",(100.*green_count)/pixels);
@@ -393,7 +395,9 @@ void orange_avoider_periodic() {
     int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
     VERBOSE_PRINT("Current state %d \n", navigation_state);
     // update our safe confidence using color threshold
-    check_obstacle_presence();
+    if (!close_to_wp(corner_wps[next_wp_route])) {
+        check_obstacle_presence();
+    }
     Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
 
     float moveDistance = fminf(maxDistance, 0.2f * obstacle_free_confidence);
@@ -402,16 +406,16 @@ void orange_avoider_periodic() {
     switch (navigation_state){
         case safe_state: //0
             moveWaypointForward(WP_TRAJECTORY, 1.f * moveDistance);
-            if (obstacle_free_confidence == 0){
+            if (obstacle_free_confidence < 2 && !close_to_wp(next_wp_route)){
                     navigation_state = obstacle_found_state;
             }
 
             if (close_to_node(&target_node)){
                 last_node = target_node;
                 if (completed_path(&route)){
-                    int next_wp_route = select_rand_target(last_wp_route, number_waypoints);
-                    Node* next_wp = find_node(route.list_nodes, next_wp_route + 'a');
                     last_wp_route = next_wp_route;
+                    next_wp_route = select_rand_target(last_wp_route, number_waypoints);
+                    Node* next_wp = find_node(route.list_nodes, next_wp_route + 'a');
                     current_path = find_path(&route, &last_node, next_wp);
                     load_path(&route, &current_path);
                     target_node = *next_in_route(&route);
@@ -425,50 +429,55 @@ void orange_avoider_periodic() {
             break;
 
         case validate_node_state: //5
-            {
-                struct EnuCoor_i pos_goal = get_wp_pos_enui(WP_GOAL);
-            if (close_to_wp(WP_GOAL)){
+            if (obstacle_free_confidence  <  2) {
+                navigation_state = obstacle_found_state;
+            } else if (obstacle_free_confidence > 3 && close_to_wp(WP_GOAL)) {
+                deviation_node.name = get_new_node_name(route.list_nodes);
+                deviation_node.position = get_wp_pos_enui(WP_GOAL);
+                add_path(&route, last_node, deviation_node);
+                add_path(&route, deviation_node, target_node);
+                block_edge(route.graph, last_node.name, target_node.name);
+
                 last_node = deviation_node;
                 set_target(&target_node);
                 navigation_state = safe_state;
             }
+            else if (close_to_wp(WP_GOAL)){
+                PRINT("REROUTING");
+                navigation_state = rerouting_state;
+            }
+            // comment above else if statemennt and
+            // uncomment following line to make the drone go in straight line until it sees as obstacle
+//            else{
+//                navigation_state = rerouting_state;
+//            }
             break;
-        }
         case rerouting_state: //4
             moveWaypointForward(WP_TRAJECTORY, 1.5f * moveDistance);
             if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
                 navigation_state = out_of_bounds_state;
-            } else if (obstacle_free_confidence  <  1){
+            } else if (obstacle_free_confidence  <  2){
                 navigation_state = obstacle_found_state;
             } else {
-                moveWaypointForward(WP_GOAL, moveDistance);
-                if (obstacle_free_confidence > 3) {
-                    deviation_node.name = get_new_node_name(route.list_nodes);
-                    deviation_node.position = get_wp_pos_enui(WP_GOAL);
-                    add_path(&route, last_node, deviation_node);
-                    add_path(&route, deviation_node, target_node);
-                    block_edge(route.graph, last_node.name, target_node.name);
-                    navigation_state = validate_node_state;
-                    break;
-                   }
-                }
+                moveWaypointForward(WP_GOAL, 1.5f *moveDistance);
+                navigation_state = validate_node_state;
+            }
+            break;
+
         case obstacle_found_state: //1
+
             waypoint_set_here_2d(WP_GOAL);
             waypoint_set_here_2d(WP_TRAJECTORY);
 
             // randomly select new search direction
             chooseRandomIncrementAvoidance();
-            heading_change = 0;
             navigation_state = search_heading_state;
             break;
 
         case search_heading_state: //2
+        PRINT("SEARCH HEADING\n");
             if (obstacle_free_confidence >= 2){
                 navigation_state = rerouting_state;
-            }
-
-            if (fabs(heading_change) > 90.){
-                search_clockwise = (search_clockwise + 1) % 2;
             }
             increase_nav_heading(heading_increment);
 
@@ -477,9 +486,6 @@ void orange_avoider_periodic() {
             break;
 
         case out_of_bounds_state: //3
-            if (fabs(heading_change) > 90.){
-                search_clockwise = (search_clockwise + 1) % 2;
-            }
             increase_nav_heading(heading_increment);
             moveWaypointForward(WP_TRAJECTORY, 1.f);
 
@@ -552,10 +558,19 @@ uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters)
 uint8_t chooseRandomIncrementAvoidance(void)
 {
     // Randomly choose CW or CCW avoiding direction
-    if (search_clockwise) {
-        heading_increment = 5.f;
+    if (rand()%2) {
+        heading_increment = 15.f;
     } else {
-        heading_increment = -5.f;
+        heading_increment = -15.f;
+    }
+    return false;
+}
+
+int rotate(int change_heading){
+    if (rand() % 2) {
+        heading_increment = change_heading;
+    } else {
+        heading_increment = change_heading;
     }
     return false;
 }

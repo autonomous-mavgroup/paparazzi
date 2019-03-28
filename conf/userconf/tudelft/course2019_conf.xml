@@ -36,7 +36,7 @@
   />
   <aircraft
    name="orange_avoider_memory"
-   ac_id="1"
+   ac_id="44"
    airframe="airframes/tudelft/orange_avoider_memory.xml"
    radio="radios/dummy.xml"
    telemetry="telemetry/default_rotorcraft.xml"
