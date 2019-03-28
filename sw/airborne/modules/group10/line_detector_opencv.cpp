@@ -54,7 +54,7 @@ int resize_offset_height = 240 - resize_height;
 
 
 
-float threshold = 2.5;
+float threshold = 1.4;
 float obs_threshold = 4;
 float total_threshold = 30;
 
@@ -144,9 +144,11 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
 
   uyvy_opencv_to_yuv_opencv(imageyuv, image, 240, 520);;
 
+  // cv::Scalar lower = cv::Scalar(50, 120, 120);
+  // cv::Scalar upper = cv::Scalar(200,130,130);
+
   cv::Scalar lower = cv::Scalar(56, 69, 64);
   cv::Scalar upper = cv::Scalar(123,160,157);
-
 
   cv::Rect crop(0, resize_offset_width, resize_height, resize_width);
   cropped = imageyuv(crop);
@@ -168,12 +170,12 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
 
   for(int x = 0; x < 520; x+=10)
   {
-    for(int y = 120; y > 0; y--)
+    for(int y = 60; y > 0; y--)
     {
       if(mask.at<uint8_t>(y, x) == 0)
       {
         int sum = 0;
-        for(int k = 0; k<4; k++)
+        for(int k = 0; k<8; k++)
         {
           sum += mask.at<uint8_t>(y-k,x);
         }
