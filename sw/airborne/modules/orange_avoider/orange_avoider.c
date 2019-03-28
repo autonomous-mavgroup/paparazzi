@@ -125,14 +125,14 @@ void orange_avoider_periodic(void)
       // randomly select new search direction
       if(control == 1)
       {
-        heading_increment = 5.0f;
+        heading_increment = 10.0f;
       } else if(control == -1)
       {
-        heading_increment = -5.0f;
+        heading_increment = -10.0f;
       }
       else if(control == 2)
       {
-        heading_increment = 180.0f;
+        heading_increment = 110.0f;
         turn_180 = 1;
         counter = 0;
         increase_nav_heading(heading_increment);
@@ -150,7 +150,7 @@ void orange_avoider_periodic(void)
       // make sure we have a couple of good readings before declaring the way safe
         if(turn_180 == 1)
         {
-          if(counter > 8)
+          if(counter > 4)
           {
             turn_180 = 0;
             navigation_state = OBSTACLE_FOUND;

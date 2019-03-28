@@ -57,7 +57,7 @@ int resize_offset_height = 240 - resize_height;
 float threshold = 1.4;
 float obs_threshold = 10;
 float total_threshold = 30;
-float central_threshold = 8;
+float central_threshold = 6; // 7
 
 
 void grayscale_opencv_to_yuv422(cv::Mat image, char *img, int width, int height)
@@ -227,6 +227,7 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   }
 
   cout << "obs left: " << n_obs_left << endl;
+  cout << "obs: " << n_obs << endl;
   cout << "obs right: " << n_obs_right << endl;
 
   int control;
@@ -268,10 +269,16 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   }
   else if(n_obs - n_obs_right - n_obs_left> central_threshold && n_obs_left > n_obs_right)
   {
-    control = -1;
+    control = 1;
     cout << "obs in front, going right" << endl;
 
   }
+  else if(n_obs - n_obs_right - n_obs_left> central_threshold && n_obs_left == n_obs_right)
+    {
+      control = 1;
+      cout << "obs in front, going right" << endl;
+
+    }
   else
   {
     control = 0;
