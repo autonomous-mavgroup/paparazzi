@@ -55,8 +55,10 @@ int resize_offset_height = 240 - resize_height;
 
 
 float threshold = 1.4;
-float obs_threshold = 4;
+float obs_threshold = 10;
 float total_threshold = 30;
+float central_threshold = 8;
+
 
 void grayscale_opencv_to_yuv422(cv::Mat image, char *img, int width, int height)
 {
@@ -228,10 +230,10 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   cout << "obs right: " << n_obs_right << endl;
 
   int control;
-  if(n_obs_left > obs_threshold && n_obs_left > n_obs_right)
+  if(n_obs > total_threshold)
   {
-    control = 1;
-    cout << "obs left, going right" << endl;  
+    control = 2;
+    cout << "obs ahead, turning around" << endl;
   }
   else if(n_obs_right > obs_threshold && n_obs_left < n_obs_right)
   {
@@ -239,24 +241,37 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
     cout << "obs right, going left" << endl;  
 
   }
-  else if(n_obs > total_threshold && n_obs_left > n_obs_right)
+
+  //  else if(n_obs > total_threshold && n_obs_left > n_obs_right)
+  //  {
+  //    control = 1;
+  //    cout << "obs ahead, going right" << endl;
+  //
+  //  }
+  //  else if(n_obs > total_threshold && n_obs_left < n_obs_right)
+  //  {
+  //    control = -1;
+  //    cout << "obs ahead, going left" << endl;
+  //
+  //  }
+  else if(n_obs_left > obs_threshold && n_obs_left > n_obs_right)
   {
     control = 1;
-    cout << "obs ahead, going right" << endl;  
+  cout << "obs left, going right" << endl;
 
   }
-  else if(n_obs > total_threshold && n_obs_left < n_obs_right)
+  else if(n_obs - n_obs_right - n_obs_left> central_threshold && n_obs_left < n_obs_right)
+  {
+  control = -1;
+  cout << "obs in front, going left" << endl;
+
+  }
+  else if(n_obs - n_obs_right - n_obs_left> central_threshold && n_obs_left > n_obs_right)
   {
     control = -1;
-    cout << "obs ahead, going left" << endl;  
+    cout << "obs in front, going right" << endl;
 
-  } 
-  else if(n_obs > 24)
-  {
-    control = 2;
-    cout << "obs ahead, turning around" << endl;  
-
-  } 
+  }
   else
   {
     control = 0;

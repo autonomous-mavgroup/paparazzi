@@ -141,9 +141,9 @@ void orange_avoider_periodic(void)
       else
       {
         navigation_state = SAFE;
+        break;
       }
       navigation_state = SEARCH_FOR_SAFE_HEADING;
-
       break;
     case SEARCH_FOR_SAFE_HEADING:
 
