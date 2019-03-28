@@ -54,7 +54,7 @@
       <define name="COLOR_OBJECT_DETECTOR_CR_MAX2" value="157"/>
 
       <define name="COLOR_OBJECT_DETECTOR_LUM_MIN3" value="0"/>
-      <define name="COLOR_OBJECT_DETECTOR_LUM_MAX3" value="50"/>
+      <define name="COLOR_OBJECT_DETECTOR_LUM_MAX3" value="100"/>
       <define name="COLOR_OBJECT_DETECTOR_CB_MIN3" value="0"/>
       <define name="COLOR_OBJECT_DETECTOR_CB_MAX3" value="255"/>
       <define name="COLOR_OBJECT_DETECTOR_CR_MIN3" value="0"/>
