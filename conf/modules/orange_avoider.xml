@@ -21,7 +21,7 @@ so you have to define which filter to use with the ORANGE_AVOIDER_VISUAL_DETECTI
     </dl_settings>
   </settings>
   
-  <depends>cv_detect_color_object</depends>
+  <depends>line_detector</depends>
   <header>
     <file name="orange_avoider.h"/>
   </header>

@@ -27,12 +27,17 @@
 #include "modules/group10/line_detector.h"
 #include "modules/group10/line_detector_opencv.h"
 #include "modules/computer_vision/viewvideo.h"
+#include "subsystems/abi.h"
+
+#include <pthread.h>
 
 #ifndef GROUP10_LINE_DETECTOR_FPS
 #define GROUP10_LINE_DETECTOR_FPS 5       ///< Default FPS (zero means run at camera fps)
 #endif
 struct image_t out;
 struct settings lsd;
+static pthread_mutex_t mutex;
+int control;
 
 // Function
 struct image_t *detect_line(struct image_t *img);
@@ -45,15 +50,30 @@ struct image_t *detect_line(struct image_t *img)
     viewvideo_debug(&out);
   }
 
-
+  pthread_mutex_lock(&mutex);
+  control = res;
+  pthread_mutex_unlock(&mutex);
 
 
   return NULL;
 }
 
+void group10_line_detector_periodic()
+{
+  int val = 0;
+  pthread_mutex_lock(&mutex);
+  val = control;
+  pthread_mutex_unlock(&mutex);
+
+  AbiSendMsgVISUAL_DETECTION(1, 0, 0, 0, 0, val, 0);
+}
+
+
+
 void group10_line_detector_init(void)
 {
-  
+  control = -2; 
+  pthread_mutex_init(&mutex, NULL);
   image_create(&out, 60, 60, IMAGE_YUV422);
   cv_add_to_device(&front_camera, detect_line, GROUP10_LINE_DETECTOR_FPS);
 }

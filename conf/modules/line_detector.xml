@@ -5,7 +5,9 @@
     <description>
     </description>
     <define name="GROUP10_LINE_DETECTOR_FPS" value="10" description="The (maximum) frequency to run the calculations at. If zero, it will max out at the camera frame rate"/>
-  </doc>
+  
+
+</doc>
 
   <settings>
     <dl_settings>
@@ -24,6 +26,7 @@
     <file name="line_detector.h"/>
   </header>
   <init fun="group10_line_detector_init()"/>
+  <periodic fun="group10_line_detector_periodic()" freq="10"/>
   <makefile target="ap">
     <file name="line_detector.c"/>
     <file name="line_detector_opencv.cpp"/>

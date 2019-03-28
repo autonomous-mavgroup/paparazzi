@@ -143,10 +143,9 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   cv::Mat res(height, width, CV_8UC2);
   // Image already in YUV format
 
-  float threshold = 2;
-  float obs_threshold = 6;
+  float threshold = 3;
+  float obs_threshold = 5;
   float total_threshold = 20;
-
   uyvy_opencv_to_yuv_opencv(imageyuv, image, 240, 520);;
 
   // cv::Scalar lower = cv::Scalar((int)set_conf.min_y, (int)set_conf.min_u,  (int)set_conf.min_v);
@@ -182,14 +181,10 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
 
   cv::inRange(cropped, lower, upper, mask);
   // cv::bitwise_not(mask, mask);
-
-  vector<cv::Point2i> positions;
   // grayscale_opencv_to_yuv422(mask, out, width, height);
 
-  cv::Canny(mask, edges, 300, 400);
 
   // grayscale_opencv_to_yuv422(mask, out, width, height);
-  cv::Size edges_size = edges.size();
 
 
   vector<cv::Point2i> points;
@@ -199,7 +194,7 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   {
     for(int y = 60; y > 0; y--)
     {
-      if(edges.at<uint8_t>(y, x) == 0)
+      if(mask.at<uint8_t>(y, x) == 0)
       {
         int sum = 0;
         for(int k = 0; k<4; k++)
@@ -233,7 +228,7 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   {
     float theta = (points[i].y*4 - 120)*(FOV_y/240);
     float d = alt/(tan(theta));
-    cout << "theta:" << theta << " distance: " << d << " pixel: " << (points[i].y*4 - 120)  << endl;
+    // cout << "theta:" << theta << " distance: " << d << " pixel: " << (points[i].y*4 - 120)  << endl;
     obs.push_back(d);
     cv::line(cropped, cv::Point(points[i].x, points[i].y), cv::Point(points[i].x, points[i].y-4), cv::Scalar(int(d*20))); 
 
@@ -277,6 +272,12 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   {
     control = -1;
     cout << "obs ahead, going left" << endl;  
+
+  } 
+  else if(n_obs > 24)
+  {
+    control = 2;
+    cout << "obs ahead, turning around" << endl;  
 
   } 
   else
