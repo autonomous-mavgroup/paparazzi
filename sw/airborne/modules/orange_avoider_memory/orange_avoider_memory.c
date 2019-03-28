@@ -258,6 +258,10 @@ bool close_to_wp(uint8_t wp) {
     return get_dist2_to_point(&pos_wp) < 0.3 * 0.3;
 }
 
+bool close_to_wp_dist(uint8_t wp, float dist){
+  struct EnuCoor_i pos_wp = get_wp_pos_enui(wp);
+  return get_dist2_to_point(&pos_wp) < dist * dist;}
+
 int select_rand_target(int avoid_this_num, int number_wps){
     int num = avoid_this_num;
     while( num == avoid_this_num){
@@ -333,9 +337,9 @@ void graph_init_test(){
     g = calloc(1, sizeof (graph_t));
     waypoints_init();
     route.graph = g;
-    struct EnuCoor_i pos_a = get_wp_pos_enui(WP_0);
+    struct EnuCoor_i pos_a = get_wp_pos_enui(WP__OZ1);
     Node a = {.name = 'a', .position = pos_a};
-    struct EnuCoor_i pos_b = get_wp_pos_enui(WP_2);
+    struct EnuCoor_i pos_b = get_wp_pos_enui(WP__OZ3);
     Node b = {.name = 'b', .position = pos_b};
 
     // Init Route
@@ -358,8 +362,8 @@ int check_obstacle_presence(){
     int green_min_treshold = 0 * pixels; //0.2
     int green_intermediate_treshold = 0.f * pixels; //0/3
     int black_max_treshold = 1 * pixels; //0.7
-    int orange_intermediate_treshold = 0.18f * pixels; //0/15
-    int orange_max_treshold = 0.3f * pixels;
+    int orange_intermediate_treshold = 0.13f * pixels; //0/15
+    int orange_max_treshold = 0.19f * pixels;
     VERBOSE_PRINT("CONFIDENCE LEVEL :%i \n",obstacle_free_confidence);
     if (green_count < green_min_treshold){
         obstacle_free_confidence -= 1;
@@ -391,9 +395,9 @@ void orange_avoider_periodic() {
     // printf causes segmentation fautls apparently
     // only evaluate our state machine if we are flying
     int failure_case = 0;
-    if(!autopilot_in_flight()){
-        return;
-    }
+//    if(!autopilot_in_flight()){
+//        return;
+//    }
     if (first_run){
         graph_init_test();
         load_path(&route, &current_path);
@@ -404,7 +408,9 @@ void orange_avoider_periodic() {
     int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
     VERBOSE_PRINT("Current state %d \n", navigation_state);
     // update our safe confidence using color threshold
-    if (!close_to_wp(corner_wps[next_wp_route])) {
+    if (close_to_wp_dist(corner_wps[next_wp_route], 0.7)){
+      obstacle_free_confidence = 5;
+    } else{
         failure_case = check_obstacle_presence();
     }
     Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
