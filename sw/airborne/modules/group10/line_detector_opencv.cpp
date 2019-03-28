@@ -143,18 +143,16 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   cv::Mat res(height, width, CV_8UC2);
   // Image already in YUV format
 
+  float threshold = 0;
+
   uyvy_opencv_to_yuv_opencv(imageyuv, image, 240, 520);;
 
-
-
-
-
-  cv::Scalar lower = cv::Scalar((int)set_conf.min_y, (int)set_conf.min_u,  (int)set_conf.min_v);
-  cv::Scalar upper = cv::Scalar((int)set_conf.max_y, (int)set_conf.max_u,  (int)set_conf.max_v);
+  // cv::Scalar lower = cv::Scalar((int)set_conf.min_y, (int)set_conf.min_u,  (int)set_conf.min_v);
+  // cv::Scalar upper = cv::Scalar((int)set_conf.max_y, (int)set_conf.max_u,  (int)set_conf.max_v);
   
 
-    // cv::Scalar lower = cv::Scalar(0, 2, 70);
-    // cv::Scalar upper = cv::Scalar(181,52,111);
+    cv::Scalar lower = cv::Scalar(56, 69, 64);
+    cv::Scalar upper = cv::Scalar(123,160,157);
 
   // cv::Scalar lower = cv::Scalar(40, 65, 160);
   // cv::Scalar upper = cv::Scalar(145,140,225);
@@ -166,8 +164,9 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
 
   // cv::Scalar lower = cv::Scalar(75, 117, 122);
   // cv::Scalar upper = cv::Scalar(115, 151, 144);
-  // cv::Scalar lower = cv::Scalar(125 ,71, 0);
-  // cv::Scalar upper = cv::Scalar(131,116, 255);
+
+  // cv::Scalar lower = cv::Scalar(0 ,120, 120);
+  // cv::Scalar upper = cv::Scalar(171,140, 140);
 
   cv::Rect crop(0, 140, 240, 240);
   cropped = imageyuv(crop);
@@ -175,84 +174,88 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
 
   cv::Mat M = cv::getRotationMatrix2D(cv::Point(30,30), 90.0, 1);
   cv::warpAffine(cropped, cropped, M, cv::Point(60,60));
-  // coloryuv_opencv_to_yuv422(cropped, out, 60,60);
 
   // cv::Scalar lower = cv::Scalar(128 ,78, 0);
   // cv::Scalar upper = cv::Scalar(133,111, 255);
 
   cv::inRange(cropped, lower, upper, mask);
-  // cv::cvtColor(mask, maskgray)
-
   // cv::bitwise_not(mask, mask);
-  // cv::bitwise_and(cropped, cropped, cropped, mask);
-  vector<cv::Point2i> positions;
-  grayscale_opencv_to_yuv422(mask, out, width, height);
 
-  //cv::blur(mask, mask, cv::Size(2,2));
+  vector<cv::Point2i> positions;
+  // grayscale_opencv_to_yuv422(mask, out, width, height);
+
   cv::Canny(mask, edges, 300, 400);
 
   // grayscale_opencv_to_yuv422(mask, out, width, height);
   cv::Size edges_size = edges.size();
 
-  // int no_lines = 100;
 
   vector<cv::Point2i> points;
 
-  int limit = 60;
   bool found_points = false;
-  for(int x = 0; x < 60; x++)
+  for(int x = 0; x < 60; x+=2)
   {
-    for(int y = 0; y<60; y++)
+    for(int y = 60; y > 0; y--)
     {
       if(edges.at<uint8_t>(y, x) > 0)
       {
         int sum = 0;
-        for(int k = 0; k<8; k++)
+        for(int k = 0; k<4; k++)
         {
           sum += mask.at<uint8_t>(y-k,x);
         }
         if(sum == 0)
         {
           points.push_back(cv::Point2i(x,y));
+          cv::line(cropped, cv::Point(x, y), cv::Point(x, y-4), cv::Scalar(255)); 
           found_points = true;
+          break;
         }
       }
     }
   }
 
 
+  coloryuv_opencv_to_yuv422(cropped, out, 60,60);
 
-  if(found_points == true)
+
+  std::vector<float> obs_right;
+  std::vector<float> obs_left;
+
+  float FOV_y = 80.0f/180.0f*3.14159f;
+  float alt = 1;
+  vector<float> fin;
+
+  float n_obs;
+  float n_obs_left;
+  float n_obs_right;
+
+  for(int i = 0; i<points.size(); i++)
   {
-    std::vector<float> diff_points = diff(points);
-    int diff_points_size = diff_points.size() / 3;
-
-    for(int i = 0; i < diff_points_size; i++)
+    float theta = (-points[i].y*4 - height/2.0f)*(FOV_y/height);
+    float d = alt/(tan(theta));
+    cout << d << endl;
+    fin.push_back(d);
+    
+    if(12 > points[i].x)
     {
-      if(diff_points[i*3+1])
+      obs_right.push_back(d);
+      if(d < threshold)
       {
-          int x = int(diff_points[i*3+0]);
-          int y = int(diff_points[i*3+1]);
-          cout << "x: " << x << " y: " << y << endl;
-          positions.push_back(cv::Point2i(x,y));
-          cv::line(cropped, cv::Point(x, y), cv::Point(x, y-3), cv::Scalar(255)); 
+        n_obs_right+=1;
       }
     }
+    else if(points[i].x > 48)
+    {
+      obs_left.push_back(d);
+      if(d < threshold)
+      {
+        n_obs_left+=1;
+      }
+    }
+    
   }
 
-
-
-  float FOV_x = 120.0f/180.0f*3.14159f;
-  float FOV_y = 120.0f/180.0f*3.14159f;
-  float alt = 1.5;
-  vector<cv::Point2f> fin;
-  for(int i = 0; i<positions.size(); i++)
-  {
-    float theta = (positions[i].y - height/2.0f)*(FOV_y/height);
-    float psi = (positions[i].x - width/2.0f)*(FOV_x/width);
-    float d = alt/(tan(theta));
-    fin.push_back(cv::Point2f(d*sin(psi),d*cos(psi)));
-  }
 
 
   return 0;
