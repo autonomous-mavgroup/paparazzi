@@ -54,7 +54,7 @@ int rotate(int);
 static uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
 uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
-uint8_t chooseRandomIncrementAvoidance(void);
+uint8_t chooseRandomIncrementAvoidance(int);
 // States for Finite State Machine
 enum navigation_state_t {
     safe_state,
@@ -73,6 +73,8 @@ float heading_change = 0;
 enum navigation_state_t navigation_state = safe_state;
 int32_t orange_count = 0;// orange color count from color filter for obstacle detection
 int32_t green_count = 0;
+int orange_x = 0;
+int orange_y = 0;
 int32_t black_count = 0;
 int16_t obstacle_free_confidence = 5;   // a meagsure of how certain we are that the way ahead is safe.
 float heading_increment = 90.f;          // heading angle increment [deg]
@@ -87,11 +89,13 @@ const int16_t max_trajectory_confidence = 5; // number of consecutive negative o
 
 static abi_event orange_detection_ev;
 static void orange_detection_cb(uint8_t __attribute__((unused)) sender_id,
-                                int16_t __attribute__((unused)) pixel_x, int16_t __attribute__((unused)) pixel_y,
+                                int16_t pixel_x, int16_t pixel_y,
                                 int16_t __attribute__((unused)) pixel_width,
                                 int16_t __attribute__((unused)) pixel_height,
                                 int32_t quality, int16_t __attribute__((unused)) extra)
 {
+    orange_x = pixel_x;
+    orange_y = pixel_y;
     orange_count = quality;
 }
 static abi_event green_detection_ev;
@@ -354,34 +358,34 @@ int check_obstacle_presence(){
     int green_min_treshold = 0 * pixels; //0.2
     int green_intermediate_treshold = 0.f * pixels; //0/3
     int black_max_treshold = 1 * pixels; //0.7
-    int orange_max_treshold = 0.2f * pixels; //0/15
-    VERBOSE_PRINT("CONFIDENT BRAH:%i \n",obstacle_free_confidence);
+    int orange_max_treshold = 0.18f * pixels; //0/15
+    VERBOSE_PRINT("CONFIDENCE LEVEL :%i \n",obstacle_free_confidence);
     if (green_count < green_min_treshold){
         obstacle_free_confidence -= 1;
         VERBOSE_PRINT("GREEN FAIL: %f \n",(100.*green_count)/pixels);
+        return 2;
+    } else if(green_count > green_min_treshold) {
+      if (orange_count > orange_max_treshold && (orange_y < 100 && orange_y > -100)) {
+        obstacle_free_confidence -= 2;
+        VERBOSE_PRINT("Orange FAIL: %f \n", (100. * orange_count) / pixels);
+        return 1;
+      } else if (black_count > black_max_treshold && green_count < green_intermediate_treshold) {
+        obstacle_free_confidence -= 2;
+        VERBOSE_PRINT("BLACK FAIL: %f \n", (100. * black_count) / pixels);
+        return 3;
+      } else {
+        obstacle_free_confidence += 2;
         return 0;
-    } else if(green_count > green_min_treshold){
-        if (orange_count > orange_max_treshold){
-            obstacle_free_confidence -= 2;
-            VERBOSE_PRINT("Orange FAIL: %f \n",(100.*orange_count)/pixels);
-
-            return 0;
-        } else if (black_count > black_max_treshold && green_count < green_intermediate_treshold){
-            obstacle_free_confidence -= 2;
-            VERBOSE_PRINT("BLACK FAIL: %f \n",(100.*black_count)/pixels);
-        }
-        else {
-
-        	obstacle_free_confidence +=2;
-        }
+      }
     }
-
 }
+
 
 void orange_avoider_periodic() {
 
     // printf causes segmentation fautls apparently
     // only evaluate our state machine if we are flying
+    int failure_case = 0;
     if(!autopilot_in_flight()){
         return;
     }
@@ -396,7 +400,7 @@ void orange_avoider_periodic() {
     VERBOSE_PRINT("Current state %d \n", navigation_state);
     // update our safe confidence using color threshold
     if (!close_to_wp(corner_wps[next_wp_route])) {
-        check_obstacle_presence();
+        failure_case = check_obstacle_presence();
     }
     Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
 
@@ -459,7 +463,7 @@ void orange_avoider_periodic() {
             } else if (obstacle_free_confidence  <  2){
                 navigation_state = obstacle_found_state;
             } else {
-                moveWaypointForward(WP_GOAL, 1.5f *moveDistance);
+                moveWaypointForward(WP_GOAL, 1.2f *moveDistance);
                 navigation_state = validate_node_state;
             }
             break;
@@ -470,12 +474,11 @@ void orange_avoider_periodic() {
             waypoint_set_here_2d(WP_TRAJECTORY);
 
             // randomly select new search direction
-            chooseRandomIncrementAvoidance();
+            chooseRandomIncrementAvoidance(failure_case);
             navigation_state = search_heading_state;
             break;
 
         case search_heading_state: //2
-        PRINT("SEARCH HEADING\n");
             if (obstacle_free_confidence >= 2){
                 navigation_state = rerouting_state;
             }
@@ -555,15 +558,23 @@ uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters)
 /*
  * Sets the variable 'heading_increment' randomly positive/negative
  */
-uint8_t chooseRandomIncrementAvoidance(void)
+uint8_t chooseRandomIncrementAvoidance(int failure_case)
 {
     // Randomly choose CW or CCW avoiding direction
-    if (rand()%2) {
+    if (failure_case == 1){
+      if (orange_y > 0){
         heading_increment = 15.f;
-    } else {
+      } else {
         heading_increment = -15.f;
+      }
+    } else {
+      if (rand() % 2) {
+        heading_increment = 15.f;
+      } else {
+        heading_increment = -15.f;
+      }
+      return false;
     }
-    return false;
 }
 
 int rotate(int change_heading){
