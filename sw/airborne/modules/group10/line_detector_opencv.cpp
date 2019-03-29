@@ -146,11 +146,11 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
 
   uyvy_opencv_to_yuv_opencv(imageyuv, image, 240, 520);;
 
-  // cv::Scalar lower = cv::Scalar(50, 120, 120);
-  // cv::Scalar upper = cv::Scalar(200,130,130);
+   cv::Scalar lower = cv::Scalar(50, 120, 120);
+   cv::Scalar upper = cv::Scalar(200,130,130);
 
-  cv::Scalar lower = cv::Scalar(56, 69, 64);
-  cv::Scalar upper = cv::Scalar(123,160,157);
+  //cv::Scalar lower = cv::Scalar(56, 69, 64);
+  //cv::Scalar upper = cv::Scalar(123,160,157);
 
   cv::Rect crop(0, resize_offset_width, resize_height, resize_width);
   cropped = imageyuv(crop);
@@ -273,7 +273,7 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
     cout << "obs in front, going right" << endl;
 
   }
-  else if(n_obs - n_obs_right - n_obs_left> central_threshold && n_obs_left == n_obs_right)
+  else if((n_obs - n_obs_right - n_obs_left) > central_threshold && n_obs_left == n_obs_right)
     {
       control = 1;
       cout << "obs in front, going right" << endl;

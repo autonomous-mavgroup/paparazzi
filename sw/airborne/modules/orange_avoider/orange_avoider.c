@@ -104,7 +104,7 @@ void orange_avoider_periodic(void)
   // bound obstacle_free_confidence
   Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
 
-  float moveDistance = 1.5f;
+  float moveDistance = 2.f;
 
   PRINT("control: %d,  state: %d, Counter: %d \n", control, navigation_state, stuckcounter);
   switch (navigation_state){
@@ -127,10 +127,17 @@ void orange_avoider_periodic(void)
       // randomly select new search direction
       if(control == 1)
       {
+<<<<<<< HEAD
         heading_increment = 5.0f;
       } else if(control == -1)
       {
         heading_increment = -5.0f;
+=======
+        heading_increment = 3.0f;
+      } else if(control == -1)
+      {
+        heading_increment = -3.0f;
+>>>>>>> 7f5002839e0449f1a9a8734f33e6cf39d2373d60
       }
       else if(control == 2)
       {
