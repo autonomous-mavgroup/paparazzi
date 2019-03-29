@@ -127,17 +127,10 @@ void orange_avoider_periodic(void)
       // randomly select new search direction
       if(control == 1)
       {
-<<<<<<< HEAD
         heading_increment = 5.0f;
       } else if(control == -1)
       {
         heading_increment = -5.0f;
-=======
-        heading_increment = 3.0f;
-      } else if(control == -1)
-      {
-        heading_increment = -3.0f;
->>>>>>> 7f5002839e0449f1a9a8734f33e6cf39d2373d60
       }
       else if(control == 2)
       {
@@ -155,7 +148,7 @@ void orange_avoider_periodic(void)
       navigation_state = SEARCH_FOR_SAFE_HEADING;
       break;
     case SEARCH_FOR_SAFE_HEADING:
-      if(stuckcounter > 4)
+      if(stuckcounter > 10)
       {
         moveWaypointForward(WP_TRAJECTORY, 1.0f);
         moveWaypointForward(WP_GOAL, 1.0f);

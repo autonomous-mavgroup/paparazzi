@@ -149,8 +149,8 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
    cv::Scalar lower = cv::Scalar(50, 120, 120);
    cv::Scalar upper = cv::Scalar(200,130,130);
 
-  //cv::Scalar lower = cv::Scalar(56, 69, 64);
-  //cv::Scalar upper = cv::Scalar(123,160,157);
+  // cv::Scalar lower = cv::Scalar(56, 69, 64);
+  // cv::Scalar upper = cv::Scalar(123,160,157);
 
   cv::Rect crop(0, resize_offset_width, resize_height, resize_width);
   cropped = imageyuv(crop);
