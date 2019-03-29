@@ -261,13 +261,13 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   cout << "obs left, going right" << endl;
 
   }
-  else if(n_obs - n_obs_right - n_obs_left> central_threshold && n_obs_left < n_obs_right)
+  else if((n_obs - n_obs_right - n_obs_left)> central_threshold && n_obs_left < n_obs_right)
   {
   control = -1;
   cout << "obs in front, going left" << endl;
 
   }
-  else if(n_obs - n_obs_right - n_obs_left> central_threshold && n_obs_left > n_obs_right)
+  else if((n_obs - n_obs_right - n_obs_left)> central_threshold && n_obs_left > n_obs_right)
   {
     control = 1;
     cout << "obs in front, going right" << endl;

@@ -60,6 +60,7 @@ float heading_increment = 5.f;          // heading angle increment [deg]
 float maxDistance = 2;               // max waypoint displacement [m]
 int counter = 0;
 int turn_180 = 0;
+int stuckcounter = 0;
 const int16_t max_trajectory_confidence = 5; // number of consecutive negative object detections to be sure we are obstacle free
 
 #ifndef ORANGE_AVOIDER_VISUAL_DETECTION_ID
@@ -105,9 +106,10 @@ void orange_avoider_periodic(void)
 
   float moveDistance = 1.5f;
 
-  PRINT("control: %d,  state: %d\n", control, navigation_state);
+  PRINT("control: %d,  state: %d, Counter: %d \n", control, navigation_state, stuckcounter);
   switch (navigation_state){
     case SAFE:
+      stuckcounter = 0;
       // Move waypoint forward
       moveWaypointForward(WP_TRAJECTORY, 1.5f * moveDistance);
       if(control != 0){
@@ -125,14 +127,14 @@ void orange_avoider_periodic(void)
       // randomly select new search direction
       if(control == 1)
       {
-        heading_increment = 10.0f;
+        heading_increment = 5.0f;
       } else if(control == -1)
       {
-        heading_increment = -10.0f;
+        heading_increment = -5.0f;
       }
       else if(control == 2)
       {
-        heading_increment = 110.0f;
+        heading_increment = 75.0f;
         turn_180 = 1;
         counter = 0;
         increase_nav_heading(heading_increment);
@@ -146,10 +148,17 @@ void orange_avoider_periodic(void)
       navigation_state = SEARCH_FOR_SAFE_HEADING;
       break;
     case SEARCH_FOR_SAFE_HEADING:
-
+      if(stuckcounter > 4)
+      {
+        moveWaypointForward(WP_TRAJECTORY, 1.0f);
+        moveWaypointForward(WP_GOAL, 1.0f);
+        stuckcounter = 0;
+        break;
+      }
       // make sure we have a couple of good readings before declaring the way safe
         if(turn_180 == 1)
         {
+          stuckcounter++;
           if(counter > 4)
           {
             turn_180 = 0;
@@ -164,6 +173,7 @@ void orange_avoider_periodic(void)
           navigation_state = SAFE;
         }else
         {
+        stuckcounter++;
         navigation_state = OBSTACLE_FOUND;
         }
         
