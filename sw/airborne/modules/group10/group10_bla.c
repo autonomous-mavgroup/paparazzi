@@ -51,7 +51,8 @@ struct image_t out;
 
 void group10_bla_init(void)
 {
-    image_create(&out, 520, 240, IMAGE_YUV422);
+    image_create(&out, 30, 55, IMAGE_YUV422);
+//    image_create(&out, 240, 520, IMAGE_YUV422);
     memset(bla_data, 0, 2*sizeof(struct bla_object_t));
     pthread_mutex_init(&mutex, NULL);
 #ifdef COLOR_OBJECT_DETECTOR_CAMERA1

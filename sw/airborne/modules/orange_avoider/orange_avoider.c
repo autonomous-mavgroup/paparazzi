@@ -24,6 +24,7 @@
 #include "subsystems/abi.h"
 #include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define NAV_C // needed to get the nav funcitons like Inside...
 #include "generated/flight_plan.h"
@@ -40,12 +41,14 @@
 uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
 uint8_t increase_nav_heading(float incrementDegrees);
+uint8_t to_new_heading(int heading);
 uint8_t chooseRandomIncrementAvoidance(void);
 
 enum navigation_state_t {
   SAFE,
   OBSTACLE_FOUND,
   SEARCH_FOR_SAFE_HEADING,
+  NOT_ENOUGH_BLACK,
   OUT_OF_BOUNDS
 };
 
@@ -56,6 +59,7 @@ float oa_color_count_frac = 0.18f;
 enum navigation_state_t navigation_state = SEARCH_FOR_SAFE_HEADING;
 int32_t heading = 0;               // orange color count from color filter for obstacle detection
 int16_t obstacle_free_confidence = 0;   // a measure of how certain we are that the way ahead is safe.
+int16_t cv_confidence = 0;
 float heading_increment = 5.f;          // heading angle increment [deg]
 float maxDistance = 2.25;               // max waypoint displacement [m]
 bool reached_edge = 0;
@@ -98,15 +102,28 @@ void orange_avoider_periodic(void)
   }
 
   // compute current color thresholds
-  int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
+  // int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
 
-  VERBOSE_PRINT("Heading: %d  reached edge: %d state: %d \n", heading, reached_edge, navigation_state);
+  VERBOSE_PRINT("\n\n\nHeading: %d  reached edge: %d state: %d \n\n\n", heading, reached_edge, navigation_state);
 
-  // update our safe confidence using color threshold
-  if(heading < color_count_threshold){
-    obstacle_free_confidence++;
+// update our safe confidence using color threshold
+//  if(heading < color_count_threshold){
+//    obstacle_free_confidence++;
+//  } else {
+//    obstacle_free_confidence -= 2;  // be more cautious with positive obstacle detections
+//  }
+
+  if (heading == 420)
+  {
+      cv_confidence -= 2;
+      obstacle_free_confidence -= 2;
+  } else if (abs(heading) < 5)
+  {
+      cv_confidence++;
+      obstacle_free_confidence++;
   } else {
-    obstacle_free_confidence -= 2;  // be more cautious with positive obstacle detections
+      obstacle_free_confidence -= 2;
+      cv_confidence++;
   }
 
   // bound obstacle_free_confidence
@@ -118,10 +135,12 @@ void orange_avoider_periodic(void)
     case SAFE:
       // Move waypoint forward
       moveWaypointForward(WP_TRAJECTORY, 1.5f * moveDistance);
-      if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
-        navigation_state = OUT_OF_BOUNDS;
+      if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))) {
+          navigation_state = OUT_OF_BOUNDS;
+      } else if (cv_confidence == 0){
+          navigation_state = NOT_ENOUGH_BLACK;
       } else if (obstacle_free_confidence == 0){
-        navigation_state = OBSTACLE_FOUND;
+        navigation_state = SEARCH_FOR_SAFE_HEADING;
       } else {
         moveWaypointForward(WP_GOAL, moveDistance);
       }
@@ -133,21 +152,36 @@ void orange_avoider_periodic(void)
       waypoint_set_here_2d(WP_TRAJECTORY);
 
       // randomly select new search direction
-      chooseRandomIncrementAvoidance();
+//      chooseRandomIncrementAvoidance();
 
       navigation_state = SEARCH_FOR_SAFE_HEADING;
 
       break;
     case SEARCH_FOR_SAFE_HEADING:
-      increase_nav_heading(heading_increment);
-
+      if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))) {
+          navigation_state = OUT_OF_BOUNDS;
+      } else if (cv_confidence >= 2) {
+          to_new_heading(heading_increment);
+          waypoint_set_here_2d(WP_GOAL);
+          waypoint_set_here_2d(WP_TRAJECTORY);
+          moveWaypointForward(WP_GOAL, 0.8f);
+          moveWaypointForward(WP_TRAJECTORY, 0.8f);
+      } else {
+          navigation_state = NOT_ENOUGH_BLACK;
+      }
       // make sure we have a couple of good readings before declaring the way safe
       if (obstacle_free_confidence >= 2){
         navigation_state = SAFE;
       }
       break;
+    case NOT_ENOUGH_BLACK:
+      increase_nav_heading(90);
+      navigation_state = SEARCH_FOR_SAFE_HEADING;
+      cv_confidence += 6;
+
+      break;
     case OUT_OF_BOUNDS:
-      increase_nav_heading(heading_increment);
+      increase_nav_heading(140);
       moveWaypointForward(WP_TRAJECTORY, 1.5f);
 
       if (InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
@@ -182,6 +216,16 @@ uint8_t increase_nav_heading(float incrementDegrees)
 
   VERBOSE_PRINT("Increasing heading to %f\n", DegOfRad(new_heading));
   return false;
+}
+
+uint8_t to_new_heading(int heading)
+{
+    float new_heading = stateGetNedToBodyEulers_f()->psi + RadOfDeg(heading);
+
+    FLOAT_ANGLE_NORMALIZE(new_heading);
+
+    VERBOSE_PRINT("Increasing heading to %f\n", DegOfRad(new_heading));
+    return false;
 }
 
 /*
