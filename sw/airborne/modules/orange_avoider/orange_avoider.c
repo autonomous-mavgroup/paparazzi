@@ -40,7 +40,6 @@
 uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
 uint8_t increase_nav_heading(float incrementDegrees);
-uint8_t chooseRandomIncrementAvoidance(void);
 
 enum navigation_state_t {
   SAFE,
@@ -49,19 +48,14 @@ enum navigation_state_t {
   OUT_OF_BOUNDS
 };
 
-// define settings
-float oa_color_count_frac = 0.18f;
 
 // define and initialise global variables
 enum navigation_state_t navigation_state = SEARCH_FOR_SAFE_HEADING;
 int32_t control = 0;               // orange color count from color filter for obstacle detection
-int16_t obstacle_free_confidence = 0;   // a measure of how certain we are that the way ahead is safe.
 float heading_increment = 5.f;          // heading angle increment [deg]
-float maxDistance = 2;               // max waypoint displacement [m]
 int counter = 0;
 int turn_180 = 0;
 int stuckcounter = 0;
-const int16_t max_trajectory_confidence = 5; // number of consecutive negative object detections to be sure we are obstacle free
 
 #ifndef ORANGE_AVOIDER_VISUAL_DETECTION_ID
 #define ORANGE_AVOIDER_VISUAL_DETECTION_ID ABI_BROADCAST
@@ -82,7 +76,6 @@ void orange_avoider_init(void)
 {
   // Initialise random values
   srand(time(NULL));
-  chooseRandomIncrementAvoidance();
 
   // bind our colorfilter callbacks to receive the color filter outputs
   AbiBindMsgVISUAL_DETECTION(ORANGE_AVOIDER_VISUAL_DETECTION_ID, &color_detection_ev, color_detection_cb);
@@ -97,12 +90,9 @@ void orange_avoider_periodic(void)
   if(!autopilot_in_flight()){
     return;
   }
+    //counter for big turns
     counter++;  
     
-
-
-  // bound obstacle_free_confidence
-  Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
 
   float moveDistance = 2.f;
 
@@ -110,7 +100,8 @@ void orange_avoider_periodic(void)
   switch (navigation_state){
     case SAFE:
       stuckcounter = 0;
-      // Move waypoint forward
+      
+      //When control = 0, move straight
       moveWaypointForward(WP_TRAJECTORY, 1.5f * moveDistance);
       if(control != 0){
         navigation_state = OBSTACLE_FOUND;
@@ -124,7 +115,10 @@ void orange_avoider_periodic(void)
       waypoint_set_here_2d(WP_GOAL);
       waypoint_set_here_2d(WP_TRAJECTORY);
 
-      // randomly select new search direction
+      // Turn right = 1
+      // Turn left = -1
+      // Big turn = 2
+
       if(control == 1)
       {
         heading_increment = 5.0f;
@@ -148,6 +142,7 @@ void orange_avoider_periodic(void)
       navigation_state = SEARCH_FOR_SAFE_HEADING;
       break;
     case SEARCH_FOR_SAFE_HEADING:
+      //If drone hasnt moved for 2.5 sec, nudge forward a bit.
       if(stuckcounter > 10)
       {
         moveWaypointForward(WP_TRAJECTORY, 1.0f);
@@ -155,27 +150,30 @@ void orange_avoider_periodic(void)
         stuckcounter = 0;
         break;
       }
-      // make sure we have a couple of good readings before declaring the way safe
-        if(turn_180 == 1)
-        {
-          stuckcounter++;
-          if(counter > 4)
-          {
-            turn_180 = 0;
-            navigation_state = OBSTACLE_FOUND;
-            counter = 0;
-          }
-          break;
-        }
-        increase_nav_heading(heading_increment);
-        if(control == 0) 
-        {
-          navigation_state = SAFE;
-        }else
-        {
+
+      // If drone is making a big turn, wait for it to complete
+      if(turn_180 == 1)
+      {
         stuckcounter++;
-        navigation_state = OBSTACLE_FOUND;
+        if(counter > 4)
+        {
+          turn_180 = 0;
+          navigation_state = OBSTACLE_FOUND;
+          counter = 0;
         }
+        break;
+      }
+
+      // Turn right
+      increase_nav_heading(heading_increment);
+      if(control == 0) 
+      {
+        navigation_state = SAFE;
+      }else
+      {
+      stuckcounter++;
+      navigation_state = OBSTACLE_FOUND;
+      }
         
         break;
     default:
@@ -236,22 +234,6 @@ uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters)
   struct EnuCoor_i new_coor;
   calculateForwards(&new_coor, distanceMeters);
   moveWaypoint(waypoint, &new_coor);
-  return false;
-}
-
-/*
- * Sets the variable 'heading_increment' randomly positive/negative
- */
-uint8_t chooseRandomIncrementAvoidance(void)
-{
-  // Randomly choose CW or CCW avoiding direction
-  if (rand() % 2 == 0) {
-    heading_increment = 5.f;
-    VERBOSE_PRINT("Set avoidance increment to: %f\n", heading_increment);
-  } else {
-    heading_increment = -5.f;
-    VERBOSE_PRINT("Set avoidance increment to: %f\n", heading_increment);
-  }
   return false;
 }
 

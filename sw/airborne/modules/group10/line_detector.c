@@ -37,7 +37,7 @@
 struct image_t out;
 struct settings lsd;
 static pthread_mutex_t mutex;
-int control;
+int control = -2;
 
 // Function
 struct image_t *detect_line(struct image_t *img);
@@ -45,11 +45,13 @@ struct image_t *detect_line(struct image_t *img)
 {
   int res = 0;
   if (img->type == IMAGE_YUV422) {
-    // Call OpenCV (C++ from paparazzi C function)
+    // Call OpenCV c++ function
     res = detect_line_opencv((char *) img->buf, img->w, img->h, (char *)out.buf, lsd);
+    //custom debug video stream
     viewvideo_debug(&out);
   }
 
+  //thread safety :)
   pthread_mutex_lock(&mutex);
   control = res;
   pthread_mutex_unlock(&mutex);
@@ -61,10 +63,12 @@ struct image_t *detect_line(struct image_t *img)
 void group10_line_detector_periodic()
 {
   int val = 0;
+  //thread safety :)
   pthread_mutex_lock(&mutex);
   val = control;
   pthread_mutex_unlock(&mutex);
 
+  //send command over to obstacle detector
   AbiSendMsgVISUAL_DETECTION(1, 0, 0, 0, 0, val, 0);
 }
 
@@ -72,8 +76,9 @@ void group10_line_detector_periodic()
 
 void group10_line_detector_init(void)
 {
-  control = -2; 
   pthread_mutex_init(&mutex, NULL);
+
+  //create image for debug stream
   image_create(&out, 520, 60, IMAGE_YUV422);
   cv_add_to_device(&front_camera, detect_line, GROUP10_LINE_DETECTOR_FPS);
 }

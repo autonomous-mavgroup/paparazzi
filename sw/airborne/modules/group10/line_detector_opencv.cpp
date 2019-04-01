@@ -59,6 +59,9 @@ float obs_threshold = 10;
 float total_threshold = 30;
 float central_threshold = 6; // 7
 
+float FOV_y = 80.0f/180.0f*3.14159f;
+float alt = 1;
+
 
 void grayscale_opencv_to_yuv422(cv::Mat image, char *img, int width, int height)
 {
@@ -142,34 +145,32 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   cv::Mat scaled;
   cv::Mat edges;
   cv::Mat res(height, width, CV_8UC2);
-  // Image already in YUV format
 
+  //Convert image to YUV
   uyvy_opencv_to_yuv_opencv(imageyuv, image, 240, 520);;
 
-   cv::Scalar lower = cv::Scalar(50, 120, 120);
-   cv::Scalar upper = cv::Scalar(200,130,130);
+  //Jungle color filter (green)
+  cv::Scalar lower = cv::Scalar(50, 120, 120);
+  cv::Scalar upper = cv::Scalar(200,130,130);
 
+  // Sim color filter (green)
   // cv::Scalar lower = cv::Scalar(56, 69, 64);
   // cv::Scalar upper = cv::Scalar(123,160,157);
 
+
+  //Crop and rotate image (scaling didn't work afterward, maybe bug in opencv?)
   cv::Rect crop(0, resize_offset_width, resize_height, resize_width);
-  cropped = imageyuv(crop);
-  
+  cropped = imageyuv(crop);  
   cv::rotate(cropped, cropped, cv::ROTATE_90_COUNTERCLOCKWISE);
 
 
-  // scaled = rotated.clone();
-  // cv::resize(scaled,scaled, cv::Size(), 0.25, 0.25);
-  // coloryuv_opencv_to_yuv422(cropped, out, 520, 120);
-
+  //Generate mask
   cv::inRange(cropped, lower, upper, mask);
-  // cout << "scaled width: " << scaled_width_center << " scaled height: " << scaled_height_center << endl;
-
-  // grayscale_opencv_to_yuv422(mask, out, width, height);
 
 
+  //Skip every 10 columns, then check if we're at the boundary of the mask
+  //Store position of the edge
   vector<cv::Point2i> points;
-
   for(int x = 0; x < 520; x+=10)
   {
     for(int y = 60; y > 0; y--)
@@ -191,13 +192,6 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
   }
 
 
-  // coloryuv_opencv_to_yuv422(cropped, out, 60,60);
-
-
-  std::vector<float> obs;
-
-  float FOV_y = 80.0f/180.0f*3.14159f;
-  float alt = 1;
 
   float n_obs = 0;
   float n_obs_left = 0;
@@ -205,12 +199,16 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
 
   for(int i = 0; i<points.size(); i++)
   {
+    //distance calculation.
     float theta = ( 60 + points[i].y)*(FOV_y/240);
     float d = alt/(tan(theta));
-    cout << "theta: " << theta << " distance: " << d << endl;
-    obs.push_back(d);
+    
+    //draw line for debug stream
     cv::line(cropped, cv::Point(points[i].x, points[i].y), cv::Point(points[i].x, points[i].y-16), cv::Scalar(255)); 
 
+    //if obstacle in left 20% of image -> increment obstacles_left
+    //if obstacle in right 20% of image -> increment obstacles_right
+    //if obstacle -> increment obstacles
     if (d < threshold)
     {
       n_obs++;
@@ -226,11 +224,13 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
     }
   }
 
-  cout << "obs left: " << n_obs_left << endl;
-  cout << "obs: " << n_obs << endl;
-  cout << "obs right: " << n_obs_right << endl;
-
+  //control signal
+  //2 - make big turn
+  //1 - turn right
+  //0 - straight
+  //-1 - turn left
   int control;
+
   if(n_obs > total_threshold)
   {
     control = 2;
@@ -242,42 +242,25 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
     cout << "obs right, going left" << endl;  
 
   }
-
-  //  else if(n_obs > total_threshold && n_obs_left > n_obs_right)
-  //  {
-  //    control = 1;
-  //    cout << "obs ahead, going right" << endl;
-  //
-  //  }
-  //  else if(n_obs > total_threshold && n_obs_left < n_obs_right)
-  //  {
-  //    control = -1;
-  //    cout << "obs ahead, going left" << endl;
-  //
-  //  }
   else if(n_obs_left > obs_threshold && n_obs_left > n_obs_right)
   {
     control = 1;
-  cout << "obs left, going right" << endl;
-
+    cout << "obs left, going right" << endl;
   }
   else if((n_obs - n_obs_right - n_obs_left)> central_threshold && n_obs_left < n_obs_right)
   {
-  control = -1;
-  cout << "obs in front, going left" << endl;
-
+    control = -1;
+    cout << "obs in front, going left" << endl;
   }
   else if((n_obs - n_obs_right - n_obs_left)> central_threshold && n_obs_left > n_obs_right)
   {
     control = 1;
     cout << "obs in front, going right" << endl;
-
   }
   else if((n_obs - n_obs_right - n_obs_left) > central_threshold && n_obs_left == n_obs_right)
     {
       control = 1;
       cout << "obs in front, going right" << endl;
-
     }
   else
   {
@@ -286,9 +269,8 @@ int detect_line_opencv(char *img, int width, int height, char *out, settings set
 
   }
 
+  //write to debug stream
   coloryuv_opencv_to_yuv422(cropped, out, 520, 60);
-
-
 
   return control;
 }
